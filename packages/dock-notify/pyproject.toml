@@ -1,0 +1,17 @@
+[project]
+name = "dock-notify"
+version = "0.1.0"
+description = "Compose detention heads-up messages and record notice_sent events."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["dock-events"]
+
+[project.scripts]
+dock-notify = "dock_notify.cli:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

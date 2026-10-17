@@ -1,0 +1,72 @@
+{
+  "scenario": "Fictional. Harbor & Rye door 4 on Saturday, October 17, 2026. No real carrier, facility, or person.",
+  "agent_number": "+15555550100",
+  "load": {
+    "load_id": "LL-88421",
+    "reference": "PO-44190",
+    "commodity": "18 pallets citrus",
+    "origin": "Fresno, CA",
+    "destination": "Elizabeth, NJ",
+    "appointment_at": "2026-10-17T18:00:00Z",
+    "timezone": "America/New_York",
+    "facility": "Harbor & Rye Grocery DC, door 4",
+    "door": "door 4",
+    "truck": "1841",
+    "trailer": "TR-2290",
+    "shipper_party_id": "pty_northwind",
+    "consignee_party_id": "pty_harbor_rye",
+    "carrier_party_id": "pty_red_kettle",
+    "broker_party_id": "pty_lantern",
+    "driver_party_id": "pty_luis"
+  },
+  "parties": [
+    {
+      "party_id": "pty_northwind",
+      "role": "shipper",
+      "name": "Northwind Orchards",
+      "contact": "Sam Okonkwo",
+      "phone": "+15555550131",
+      "city": "Fresno, CA"
+    },
+    {
+      "party_id": "pty_harbor_rye",
+      "role": "consignee",
+      "name": "Harbor & Rye Grocery",
+      "contact": "Priya Shah",
+      "phone": "+15555550121",
+      "city": "Elizabeth, NJ"
+    },
+    {
+      "party_id": "pty_red_kettle",
+      "role": "carrier",
+      "name": "Red Kettle Freight",
+      "contact": "Dispatch",
+      "phone": "+15555550151",
+      "city": "Fontana, CA",
+      "mc": "MC-FAKE-88421"
+    },
+    {
+      "party_id": "pty_lantern",
+      "role": "broker",
+      "name": "Lantern Lane Logistics",
+      "contact": "Alex Kim",
+      "phone": "+15555550141",
+      "city": "Chicago, IL"
+    },
+    {
+      "party_id": "pty_luis",
+      "role": "driver",
+      "name": "Luis Ortega",
+      "contact": "Luis Ortega",
+      "phone": "+15555550114",
+      "city": "on the road"
+    }
+  ],
+  "policy": {
+    "free_minutes": 120,
+    "warn_minutes": 30,
+    "rate_usd_per_hour": "75.00",
+    "increment_minutes": 15,
+    "stop_on": "unload_started"
+  }
+}

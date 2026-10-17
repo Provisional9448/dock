@@ -1,0 +1,13 @@
+[project]
+name = "dock-events"
+version = "0.1.0"
+description = "Append-only JSONL event log and the Dock event schema."
+license = "MIT"
+requires-python = ">=3.11"
+
+[project.scripts]
+dock-events = "dock_events.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dock · detention desk</title>
+  <style>
+    :root {
+      --paper: #efe4d2;
+      --paper-deep: #e5d6be;
+      --card: #fbf6ec;
+      --ink: #1b1612;
+      --muted: #5e5348;
+      --rule: #d3c3ab;
+      --good: #1d5c45;
+      --good-bg: #dce8e1;
+      --amber: #8a4e0f;
+      --amber-bg: #f3ddc0;
+      --stamp: #8d2c2c;
+      --stamp-bg: #f6d9d2;
+      --focus: #1b1612;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(1200px 400px at 10% -10%, #f6efe2 0%, transparent 50%),
+        var(--paper);
+      color: var(--ink);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    header, main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 28px 0 8px; }
+    .brand { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+    .mark {
+      font-family: Georgia, "Iowan Old Style", Palatino, serif;
+      font-size: 42px;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .product { color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; font-size: 12px; }
+    .banner {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .loadbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--rule);
+      padding: 10px 0;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    .loadbar strong { font-family: ui-monospace, monospace; font-weight: 600; }
+    .roles { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+    .roles button, .presets button, .prompts button, .actions button {
+      background: transparent;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      padding: 8px 14px;
+    }
+    .roles button[aria-selected="true"], .presets button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--card);
+    }
+    main { display: grid; grid-template-columns: 340px 1fr; gap: 18px; padding-bottom: 48px; align-items: start; }
+    .status, .timeline, .panel {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .panel { grid-column: 1 / -1; }
+    .stamp {
+      display: inline-block;
+      border: 2px solid currentColor;
+      border-radius: 6px;
+      padding: 4px 8px;
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      font-weight: 700;
+      transform: rotate(-2deg);
+    }
+    .phase-running { color: var(--good); }
+    .phase-warning { color: var(--amber); }
+    .phase-accruing, .phase-closed { color: var(--stamp); }
+    .phase-not_started { color: var(--muted); }
+    h1 {
+      font-family: Georgia, Palatino, serif;
+      font-size: clamp(40px, 6vw, 64px);
+      line-height: 0.95;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      margin: 16px 0 8px;
+    }
+    .detail, .avoid { margin: 0 0 12px; }
+    .avoid { background: var(--paper-deep); padding: 10px 12px; border-radius: 10px; }
+    .presets, .prompts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    h2 { font-size: 15px; font-weight: 650; letter-spacing: 0; color: var(--ink); margin: 18px 0 8px; }
+    .timeline ol { list-style: none; margin: 0; padding: 0; }
+    .timeline li {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 10px;
+      padding: 10px 0;
+      border-top: 1px solid var(--rule);
+    }
+    .when { font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted); }
+    .etype { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .line { margin: 2px 0 0; }
+    .note { min-height: 1.2em; color: var(--good); font-size: 14px; }
+    .note.error { color: var(--stamp); }
+    textarea {
+      width: 100%;
+      min-height: 76px;
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+    .actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .actions button.primary { background: var(--ink); color: var(--card); }
+    .sms {
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      padding: 12px;
+      margin: 8px 0;
+      background: #fff;
+      white-space: pre-wrap;
+    }
+    .sms .meta { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    pre.proof {
+      white-space: pre-wrap;
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--rule);
+      max-height: 420px;
+      overflow: auto;
+      font-size: 13px;
+    }
+    .empty { color: var(--muted); }
+    footer { width: min(1120px, calc(100% - 32px)); margin: 0 auto 32px; color: var(--muted); font-size: 13px; }
+    code { font-family: ui-monospace, monospace; font-size: 12px; }
+    @media (max-width: 800px) {
+      main, .split { grid-template-columns: 1fr; }
+      .timeline li { grid-template-columns: 1fr; gap: 2px; }
+      header, main, footer { width: min(1120px, calc(100% - 20px)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark">Dock</div>
+      <div class="product">Detention prevention</div>
+    </div>
+    <p class="banner" id="banner">Loading the Saturday desk…</p>
+    <div class="loadbar" id="loadbar"></div>
+    <div class="roles" role="tablist" aria-label="Role">
+      <button type="button" role="tab" data-role="carrier" aria-selected="true">Carrier</button>
+      <button type="button" role="tab" data-role="shipper" aria-selected="false">Shipper</button>
+      <button type="button" role="tab" data-role="broker" aria-selected="false">Broker</button>
+    </div>
+  </header>
+  <main>
+    <section class="status" id="status" aria-live="polite"></section>
+    <section class="timeline" id="timeline"></section>
+    <section class="panel" id="panel"></section>
+  </main>
+  <footer>
+    Same events for every role. Regenerate the file trail with
+    <code>examples/detention-pipe.sh</code>.
+  </footer>
+  <script>
+    const state = { role: "carrier", desk: null };
+
+    const labels = {
+      arrived: "Arrived",
+      delay_reported: "Delay reported",
+      clock_started: "Clock started",
+      charge_risk: "Charge risk",
+      notice_sent: "Heads-up",
+      call_result: "Call",
+      unload_started: "Unload started",
+      unload_done: "Unload finished",
+      claim_drafted: "Trail drafted",
+    };
+
+    function el(tag, attrs, children) {
+      const node = document.createElement(tag);
+      for (const [key, value] of Object.entries(attrs || {})) {
+        if (key === "class") node.className = value;
+        else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+        else if (value === true) node.setAttribute(key, "");
+        else if (value !== false && value != null) node.setAttribute(key, value);
+      }
+      for (const child of children || []) {
+        node.append(child && child.nodeType ? child : document.createTextNode(child == null ? "" : String(child)));
+      }
+      return node;
+    }
+
+    async function api(path, body) {
+      const response = await fetch(path, body ? {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      } : undefined);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "request failed");
+      return payload;
+    }
+
+    async function refresh(path, body) {
+      try {
+        state.desk = await api(path || "/api/desk", body);
+        render();
+      } catch (error) {
+        const banner = document.getElementById("banner");
+        banner.textContent = error.message;
+        banner.className = "banner";
+      }
+    }
+
+    function render() {
+      const desk = state.desk;
+      document.getElementById("banner").textContent = desk.banner + " Demo clock: " + desk.demo_as_of_local + ".";
+      const load = desk.load;
+      const bar = document.getElementById("loadbar");
+      bar.replaceChildren(
+        el("div", {}, [el("strong", {}, [load.load_id]), " · " + load.reference + " · " + load.commodity]),
+        el("div", {}, [load.origin + " → " + load.destination]),
+        el("div", {}, [load.facility]),
+      );
+      renderStatus(desk);
+      renderTimeline(desk);
+      renderPanel(desk);
+    }
+
+    function renderStatus(desk) {
+      const summary = desk.summary;
+      const section = document.getElementById("status");
+      const presets = el("div", { class: "presets" });
+      for (const preset of desk.presets) {
+        presets.append(el("button", {
+          type: "button",
+          "aria-pressed": preset.id === desk.active_preset ? "true" : "false",
+          onclick: () => refresh("/api/as-of", { preset: preset.id }),
+        }, [preset.label]));
+      }
+      section.replaceChildren(
+        el("div", { class: "stamp phase-" + summary.phase }, [summary.stamp]),
+        el("h1", {}, [summary.headline]),
+        el("p", { class: "detail" }, [summary.detail]),
+        el("p", { class: "avoid" }, [summary.how_to_avoid]),
+        el("h2", {}, ["Move the demo clock"]),
+        presets,
+        el("p", { class: "note" + (desk.note && desk.note.startsWith("could not") ? " error" : "") }, [desk.note || ""]),
+      );
+    }
+
+    function renderTimeline(desk) {
+      const section = document.getElementById("timeline");
+      const items = desk.events.filter((row) => row.event.type !== "claim_drafted");
+      const list = el("ol");
+      if (!items.length) {
+        list.append(el("li", {}, [el("p", { class: "empty" }, ["No events at this demo time."])]));
+      }
+      for (const row of items) {
+        list.append(el("li", {}, [
+          el("div", { class: "when" }, [row.occurred_local]),
+          el("div", {}, [
+            el("div", { class: "etype" }, [labels[row.event.type] || row.event.type]),
+            el("p", { class: "line" }, [row.line]),
+          ]),
+        ]));
+      }
+      section.replaceChildren(el("h2", {}, ["Trail"]), list);
+    }
+
+    function renderPanel(desk) {
+      const panel = document.getElementById("panel");
+      if (state.role === "carrier") panel.replaceChildren(carrierPanel(desk));
+      else if (state.role === "shipper") panel.replaceChildren(shipperPanel(desk));
+      else panel.replaceChildren(brokerPanel(desk));
+    }
+
+    function carrierPanel(desk) {
+      const box = el("textarea", { id: "driver-text", "aria-label": "What the driver reports" });
+      box.placeholder = "Text as Luis, the driver.";
+      const prompts = el("div", { class: "prompts" });
+      for (const prompt of desk.driver_prompts) {
+        prompts.append(el("button", { type: "button", onclick: () => { box.value = prompt; } }, [prompt]));
+      }
+      return el("div", {}, [
+        el("h2", {}, ["Carrier desk · you are dispatch, and you can also play the driver"]),
+        el("p", {}, ["Luis Ortega, truck 1841, Red Kettle Freight. A report is an SMS into dock-intake. It is stamped with the demo clock, not the wall clock."]),
+        prompts,
+        box,
+        el("div", { class: "actions" }, [
+          el("button", { type: "button", class: "primary", onclick: () => refresh("/api/driver", { text: box.value }) }, ["Log driver SMS"]),
+          el("button", { type: "button", onclick: () => refresh("/api/reset") }, ["Reset sample"]),
+        ]),
+      ]);
+    }
+
+    function shipperPanel(desk) {
+      const notices = desk.events.filter((row) => row.event.type === "notice_sent" && row.event.payload.to_role === "shipper");
+      const wrap = el("div");
+      wrap.append(
+        el("h2", {}, ["Shipper desk · Sam Okonkwo, Northwind Orchards"]),
+        el("p", {}, ["These are the heads-ups dock-notify composed. They are logged. They were not sent to a phone."]),
+      );
+      if (!notices.length) {
+        wrap.append(el("p", { class: "empty" }, ["No heads-up yet. Move the clock to 30 minutes of free time left."]));
+        return wrap;
+      }
+      for (const row of notices) wrap.append(smsCard(row));
+      return wrap;
+    }
+
+    function brokerPanel(desk) {
+      const notices = desk.events.filter((row) => row.event.type === "notice_sent");
+      const calls = desk.events.filter((row) => row.event.type === "call_result");
+      const left = el("div");
+      left.append(el("h2", {}, ["Heads-ups on the trail"]));
+      if (!notices.length) left.append(el("p", { class: "empty" }, ["None yet."]));
+      for (const row of notices) left.append(smsCard(row));
+      const right = el("div");
+      right.append(el("h2", {}, ["Calls"]));
+      if (!calls.length) right.append(el("p", { class: "empty" }, ["No call result at this demo time."]));
+      for (const row of calls) {
+        right.append(el("p", {}, [row.occurred_local + " · " + row.line]));
+      }
+      right.append(el("h2", {}, ["Proof pack"]), el("pre", { class: "proof" }, [desk.proof_markdown]));
+      return el("div", {}, [
+        el("h2", {}, ["Broker desk · Alex Kim, Lantern Lane Logistics"]),
+        el("p", {}, ["One trail for the argument later: arrival, notices, the call, and the estimate. Still not an invoice."]),
+        el("div", { class: "split" }, [left, right]),
+      ]);
+    }
+
+    function smsCard(row) {
+      const payload = row.event.payload;
+      return el("article", { class: "sms" }, [
+        el("div", { class: "meta" }, [row.occurred_local + " · to " + payload.to_name + " · " + payload.delivery_status]),
+        payload.body,
+      ]);
+    }
+
+    for (const button of document.querySelectorAll(".roles button")) {
+      button.addEventListener("click", () => {
+        state.role = button.dataset.role;
+        for (const other of document.querySelectorAll(".roles button")) {
+          other.setAttribute("aria-selected", other === button ? "true" : "false");
+        }
+        if (state.desk) renderPanel(state.desk);
+      });
+    }
+
+    refresh("/api/desk");
+  </script>
+</body>
+</html>

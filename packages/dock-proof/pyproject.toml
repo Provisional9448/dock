@@ -1,0 +1,17 @@
+[project]
+name = "dock-proof"
+version = "0.1.0"
+description = "Render a detention trail from the event log. Not an invoice."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["dock-events"]
+
+[project.scripts]
+dock-proof = "dock_proof.cli:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

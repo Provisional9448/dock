@@ -1,0 +1,17 @@
+[project]
+name = "dock-call"
+version = "0.1.0"
+description = "Scripted Guava outbound calls. Rules live in code. Live dialing is gated."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["dock-events"]
+
+[project.scripts]
+dock-call = "dock_call.cli:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

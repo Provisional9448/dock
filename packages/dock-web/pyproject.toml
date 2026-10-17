@@ -1,0 +1,27 @@
+[project]
+name = "dock-web"
+version = "0.1.0"
+description = "One desk, three roles, the same detention events."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "dock-events",
+    "dock-intake",
+    "dock-clock",
+    "dock-notify",
+    "dock-proof",
+]
+
+[project.scripts]
+dock-web = "dock_web.cli:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+dock-intake = { workspace = true }
+dock-clock = { workspace = true }
+dock-notify = { workspace = true }
+dock-proof = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

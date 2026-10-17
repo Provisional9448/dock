@@ -1,0 +1,39 @@
+[project]
+name = "dock"
+version = "0.1.0"
+description = "Modular freight voice and SMS agent parts. Detention prevention is the first workflow."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "dock-events",
+    "dock-intake",
+    "dock-clock",
+    "dock-call",
+    "dock-notify",
+    "dock-proof",
+    "dock-web",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+dock-intake = { workspace = true }
+dock-clock = { workspace = true }
+dock-call = { workspace = true }
+dock-notify = { workspace = true }
+dock-proof = { workspace = true }
+dock-web = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["tests"]
