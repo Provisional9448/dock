@@ -62,9 +62,20 @@ When you change copy or clock math, regenerate `data/samples/harbor-rye.trail.js
 | Heads-up wording | `dock_notify/compose.py`, notify test, sample trail |
 | Call rules | `dock_call/plan.py` and the plan test. Keep the zero-dollar rule. |
 
-## Guava, when you get there
+## Guava
 
-Starter: <https://goguava.ai/docs/coding-agent-starter.md>
+The CLI and SDK are part of the environment. `.cursor/install.sh` (wired from `.cursor/environment.json`) installs the CLI with `curl -fsSL https://goguava.ai/install.sh | sh`, links it to `/usr/local/bin/guava`, and runs `uv sync --frozen`. `guava-sdk>=0.48` is a root dependency. Do not log in and do not write keys into the repo.
+
+```bash
+guava --version
+uv run python -c "import guava"
+```
+
+Auth, only when a task needs a live call: `guava login`, or the `GUAVA_API_KEY` environment variable. `GUAVA_AGENT_NUMBER` is the from-number. Leave both unset for tests.
+
+- Quickstart: <https://docs.goguava.ai/getting-started/quickstart>
+- Docs index: <https://docs.goguava.ai/llms.txt>
+- Coding-agent starter: <https://goguava.ai/docs/coding-agent-starter.md>
 
 - Inbound: `agent.listen_phone(os.environ["GUAVA_AGENT_NUMBER"])`.
 - Outbound: `agent.call_phone(from_number=..., to_number=..., variables=...)`.

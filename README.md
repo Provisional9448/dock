@@ -87,6 +87,7 @@ docs/ROADMAP.md         later modules, docs only
 docs/DEMO.md            Saturday script
 AGENTS.md               conventions for coding agents
 CONTRIBUTING.md         pick a module
+.cursor/install.sh      Guava CLI, uv, and uv sync for cloud agents
 packages/dock-*/        one package per module
 data/samples/           fictional load, raw facts, derived trail
 examples/               pipe and sample builder
@@ -95,7 +96,20 @@ tests/                  pytest
 
 ## Voice
 
-Guava (`guava-sdk`) is the voice runtime: `agent.call_phone`, `agent.listen_phone`, and, for tests, `agent.chat` and `agent.roleplay`. Read [the coding-agent starter](https://goguava.ai/docs/coding-agent-starter.md) before wiring a live expert. This repo does not import Guava unless you pass the live gate, so `uv run pytest` needs no API key.
+Guava is the voice runtime. The Python package `guava-sdk` (pinned `>=0.48`) is a project dependency, so `uv sync` installs it. Cloud agents also get the Guava CLI from `.cursor/install.sh`, which runs on environment setup and links `guava` onto `/usr/local/bin`.
+
+```bash
+guava --version
+uv run python -c "import guava"
+```
+
+Docs:
+
+- Quickstart: <https://docs.goguava.ai/getting-started/quickstart>
+- Full index: <https://docs.goguava.ai/llms.txt>
+- Coding-agent starter: <https://goguava.ai/docs/coding-agent-starter.md>
+
+Authenticate with `guava login`, or export `GUAVA_API_KEY` (and `GUAVA_AGENT_NUMBER` when you dial). Do not commit either value. The Saturday demo and `uv run pytest` do not need a key. This repo still does not import Guava unless you pass the live gate.
 
 ## License
 

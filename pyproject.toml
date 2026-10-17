@@ -13,6 +13,7 @@ dependencies = [
     "dock-notify",
     "dock-proof",
     "dock-web",
+    "guava-sdk>=0.48",
 ]
 
 [tool.uv]

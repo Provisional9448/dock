@@ -1,0 +1,4 @@
+{
+  "name": "Dock",
+  "install": "bash .cursor/install.sh"
+}
