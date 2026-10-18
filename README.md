@@ -10,13 +10,13 @@ Dock logs the driver's check-in and starts the free-time clock. Anyone on the lo
 
 ## Try it
 
-- **Call (240) 212-5485.** Say whether you're the driver, shipper, receiver or broker. Try load number LL-88421.
+- **Call (240) 212-5485.** Give load number LL-88421 and a name on that load, for example "This is Dan at Northwind Orchards" (the shipper).
 - **Website:** https://dock-landing-production.up.railway.app (you can talk to the agent in your browser)
 - **Live desk:** https://dock-desk-production.up.railway.app (shows the load as calls update it)
 
 ## Run it locally
 
-Requires Python 3.11+, [uv](https://docs.astral.sh/uv/) and a [Guava](https://docs.goguava.ai/getting-started/quickstart) account for the phone line.
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), tmux and a [Guava](https://docs.goguava.ai/getting-started/quickstart) account for the phone line.
 
 ```bash
 uv sync
@@ -24,11 +24,11 @@ guava login
 ./scripts/demo-up.sh
 ```
 
-This starts the phone agent and the desk at http://127.0.0.1:8741. Without `guava login`, only the desk starts. Run the tests with `uv run pytest`.
+This starts the phone agent and the desk at http://127.0.0.1:8741. Without `guava login`, only the desk works. Run the tests with `uv run pytest`.
 
 ## How it's built
 
-Each part is a small Python package in `packages/`. They share one append-only event log.
+Each part is a small package in `packages/`. The Python packages share one append-only event log.
 
 - `dock-voice`: the phone agent (built on Guava)
 - `dock-events`: the event log and its format
@@ -39,7 +39,7 @@ Each part is a small Python package in `packages/`. They share one append-only e
 - `dock-track`: handles "where is my load?" requests
 - `dock-proof`: builds the timestamped record for the broker
 - `dock-web`: the live desk
-- `dock-landing`: the website
+- `dock-landing`: the website (static HTML)
 
 Details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). If you want to contribute, start with [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
 
