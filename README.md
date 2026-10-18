@@ -1,175 +1,52 @@
 # Dock
 
-## For judges
+Dock is a phone agent that tracks truck waiting time at the loading dock, so drivers, shippers, receivers and brokers all see the same clock.
 
-Dock is a voice agent for the dock. Call (240) 212-5485 as the driver, shipper, consignee or broker, and it answers from the same live record: when free time started, how long is left, what a charge would be, and what stops it.
+## The problem
 
-Shipper, consignee, broker, carrier all on the same page.
+A truck arrives for its appointment, but the receiver isn't ready to unload. After the free time runs out (often two hours), the carrier can bill a detention charge. Usually the shipper only finds out when the invoice shows up, and then everyone argues over whose times are right.
 
-A driver arrives and the receiver is not ready to unload, so free time starts. Dock records the check-in on one append-only log, runs the clock, and gives the shipper and consignee a heads-up with the estimate and what stops the charge. The broker reads those same events as a timestamped trail, and the page says this is not an invoice.
+Dock logs the driver's check-in and starts the free-time clock. Anyone on the load can call and hear the same facts: when the clock started, how much free time is left, what the charge would be so far, and what would stop it. The broker gets a timestamped record of each event, so the charge isn't a surprise.
 
-- Demo line: (240) 212-5485. Call as driver, shipper, consignee or broker.
-- Live desk (what the call writes): https://dock-desk-production.up.railway.app
-- Mocks (supporting visuals): https://provisional9448.github.io/dock/site/
+## Try it
 
-One command locally (the inbound voice line plus the desk on 8741):
+- **Call (240) 212-5485.** Give load number LL-88421 and a name on that load, for example "This is Dan at Northwind Orchards" (the shipper).
+- **Website:** https://dock-landing-production.up.railway.app (you can talk to the agent in your browser)
+- **Live desk:** https://dock-desk-production.up.railway.app (shows the load as calls update it)
 
-```bash
-./scripts/demo-up.sh
-```
+## Run it locally
 
-The voice line is the demo. It needs `guava login` or `GUAVA_API_KEY`. Without Guava auth, only the desk comes up, at http://127.0.0.1:8741.
-
-- `dock-voice` — Inbound Guava line for driver, shipper, consignee, or broker; `dock-live replay` is the scripted fallback.
-- `dock-events` — Append-only JSONL log and the event schema.
-- `dock-clock` — Free-time clock. Writes `clock_started` and `charge_risk`.
-- `dock-intake` — Driver voice and SMS into events.
-- `dock-notify` — Heads-up copy at each detention mark. Writes `notice_sent`.
-- `dock-call` — Scripted outbound plan. `call_phone` runs only with `DOCK_CALL_MODE=live`.
-- `dock-proof` — Renders the timestamped detention trail from the log.
-- `dock-web` — Desk over that log: shipper, consignee, broker, and carrier.
-- `dock-track` — A free-text tracking request becomes a `tracking_requested` event.
-
-All names, phone numbers, loads, and documents in this repo are fictional.
-
-Dock is a small, open toolkit for freight voice and SMS agents. The first workflow is **detention prevention**: a driver arrives and the receiver is not ready to unload, so a free-time clock starts, the shipper and consignee get a heads-up while there is still time to fix it, and the broker keeps a timestamped trail. The trail is there so the charge is not a surprise on the invoice.
-
-This starter was built for the Guava voice-agent hackathon on October 17, 2026. The code is intentionally thin. The docs are the map for human teammates and coding agents. It stays private to the team: do not publish the packages to PyPI.
-
-All names, phone numbers, and loads in this repo are fictional.
-
-## Pitch
-
-Appointment and pickup slips are the everyday failure. "Where is it?" is the high-volume question. Storage, demurrage, detention, and wait time are rarer and much more expensive, and they grow after free time. Missing paperwork stops crossings and billing. Surprise accessorials get fought at invoice time.
-
-Dock starts with the expensive quiet one. A driver reports, by voice or SMS, that the dock will not take the trailer. The clock runs in the open. The people who can fix it hear about it before free time ends, with the estimate so far and the specific thing that stops the charge. Later, the same events are the proof pack.
-
-The shape is Unix. Each module does one job, speaks JSONL, and can be piped. A bigger freight agent can reuse a module without taking the rest.
-
-## 60-second demo
-
-No carrier, no Guava account, no SMS provider.
-
-1. `uv run dock-web --port 8741` and open [the desk](http://127.0.0.1:8741).
-2. You are on the carrier view. Luis Ortega is at Harbor & Rye, door 4. Free time is running. The estimate is `$0.00`.
-3. Press **30 min of free time left**. Switch to **Shipper**. Dan Okonkwo has a heads-up: `$0.00` so far, and the minute the clock starts costing money.
-4. Press **15 min past free time**. The trail shows `$18.75`. Priya Shah's call is on the timeline: she asked for about 40 minutes, and the meter is already on.
-5. Press **Unload started**. Switch to **Broker**. The clock has stopped. The pack supports `$56.25`. It says, on the page, that this is not an invoice.
-
-The longer script, including playing the driver by SMS, is [docs/DEMO.md](docs/DEMO.md).
-
-## Live demo (hackathon)
-
-One Guava inbound line, one shared log, three live views. Outbound calling is disabled at the event, so the shipper and receiver *call in* and hear the heads-up Dock would have dialed out with.
-
-- Live desk: https://dock-desk-production.up.railway.app (shipper, carrier, broker side by side; refreshes every 1.5 s)
-- Call the Dock line: **(240) 212-5485**. Say "driver", "shipper", "receiver" or "broker".
-- Video script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md)
-
-One command (desk + voice line in tmux; add `replay` for the scripted B-roll):
-
-```bash
-./scripts/demo-up.sh            # or: ./scripts/demo-up.sh replay
-```
-
-Live call transcripts and WAVs are saved to `demo/calls/` after each call.
-
-```bash
-uv sync && guava login
-export GUAVA_AGENT_NUMBER=+1...            # guava numbers list
-uv run dock-web --live --port 8741 &      # http://127.0.0.1:8741
-uv run dock-voice serve                   # inbound only
-uv run dock-voice roleplay shipper        # Guava's simulated caller, no phone
-uv run dock-live replay --pause 4         # scripted fallback
-```
-
-`dock-voice` (packages/dock-voice) reads the clock inside its handlers, so numbers are current mid-call. `DOCK_LIVE_URL` + `DOCK_WRITE_TOKEN` let the agent write to a desk on another machine.
-
-## Quickstart
-
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), tmux and a [Guava](https://docs.goguava.ai/getting-started/quickstart) account for the phone line.
 
 ```bash
 uv sync
-uv run pytest
-uv run dock-web --port 8741
+guava login
+./scripts/demo-up.sh
 ```
 
-The desk listens on `0.0.0.0:8741`. Open `http://127.0.0.1:8741`.
+This starts the phone agent and the desk at http://127.0.0.1:8741. Without `guava login`, only the desk works. Run the tests with `uv run pytest`.
 
-The same story as a pipe, writing a markdown trail and touching no network:
+## How it's built
 
-```bash
-./examples/detention-pipe.sh
-```
+Each part is a small package in `packages/`. The Python packages share one append-only event log.
 
-That is:
+- `dock-voice`: the phone agent (built on Guava)
+- `dock-events`: the event log and its format
+- `dock-clock`: the free-time clock and charge estimate
+- `dock-intake`: turns driver calls and texts into events
+- `dock-notify`: writes the heads-up messages
+- `dock-call`: plans outbound calls
+- `dock-track`: handles "where is my load?" requests
+- `dock-proof`: builds the timestamped record for the broker
+- `dock-web`: the live desk
+- `dock-landing`: the website (static HTML)
 
-```bash
-uv run dock-events cat data/samples/harbor-rye.raw.jsonl \
-  | uv run dock-clock --replay --as-of 2026-10-17T22:05:00Z \
-  | uv run dock-notify \
-  | uv run dock-proof --load LL-88421 --out data/runtime/LL-88421-trail.md
-```
+Details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). If you want to contribute, start with [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
 
-Regenerate the committed sample trail after a clock or copy change:
+All names, phone numbers and loads in this repo are made up.
 
-```bash
-uv run python examples/build_sample.py
-uv run pytest
-```
-
-Copy `.env.example` to `.env` only when you are ready to try a live Guava call. Never commit `.env`. The Saturday demo does not need it.
-
-## What runs, what is stubbed
-
-| Module | What it does | In this starter |
-| --- | --- | --- |
-| `dock-events` | Schema and append-only JSONL log | Runs |
-| `dock-clock` | Free-time clock, emits `charge_risk` | Runs |
-| `dock-intake` | Driver text to events | Rules run. Guava `listen_phone` is gated behind `DOCK_CALL_MODE=live` |
-| `dock-notify` | Heads-up with the estimate and how to avoid it | Composes events. Providers do not send |
-| `dock-call` | Scripted outbound goal, rules in code | `plan` and `simulate` run. `call_phone` is gated |
-| `dock-proof` | Timeline to a detention trail | Runs |
-| `dock-web` | Shipper, carrier, and broker over the same events | Runs in memory |
-
-There is no `dock-status`, `dock-docs`, fleet-compliance, or crash-intake code. Those are described in [docs/ROADMAP.md](docs/ROADMAP.md) only.
-
-SMS sits behind a provider interface (`log`, `twilio`, `guava`). The Twilio and Guava adapters return a stub receipt and do not open a socket. Guava's current docs do include SMS (`client.send_sms`, `client.next_sms`); see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The web desk always uses the log provider.
-
-## Repo map
-
-```
-docs/VISION.md          why detention, and what Dock refuses to be
-docs/ARCHITECTURE.md    diagram, event schema, module contracts
-docs/ROADMAP.md         later modules, docs only
-docs/DEMO.md            Saturday script
-AGENTS.md               conventions for coding agents
-CONTRIBUTING.md         pick a module
-.cursor/install.sh      Guava CLI, uv, and uv sync for cloud agents
-packages/dock-*/        one package per module
-data/samples/           fictional load, raw facts, derived trail
-examples/               pipe and sample builder
-tests/                  pytest
-```
-
-## Voice
-
-Guava is the voice runtime. The Python package `guava-sdk` (pinned `>=0.48`) is a project dependency, so `uv sync` installs it. Cloud agents also get the Guava CLI from `.cursor/install.sh`, which runs on environment setup and links `guava` onto `/usr/local/bin`.
-
-```bash
-guava --version
-uv run python -c "import guava"
-```
-
-Docs:
-
-- Quickstart: <https://docs.goguava.ai/getting-started/quickstart>
-- Full index: <https://docs.goguava.ai/llms.txt>
-- Coding-agent starter: <https://goguava.ai/docs/coding-agent-starter.md>
-
-Authenticate with `guava login`, or export `GUAVA_API_KEY` (and `GUAVA_AGENT_NUMBER` when you dial). Do not commit either value. The Saturday demo and `uv run pytest` do not need a key. This repo still does not import Guava unless you pass the live gate.
+Built at the Guava voice-agent hackathon on October 17, 2026.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE)
