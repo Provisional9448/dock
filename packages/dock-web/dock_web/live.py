@@ -45,8 +45,42 @@ def _wall() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class _Remote:
+    """Same LiveRun, backed by a dock-web desk elsewhere (DOCK_LIVE_URL). Lets the voice agent run on one
+    machine and the public desk on another while sharing one log and one clock."""
+
+    def __init__(self, base: str, token: str):
+        self.base = base.rstrip("/")
+        self.token = token
+
+    def _call(self, path: str, body: dict | None = None) -> dict:
+        from urllib.request import Request, urlopen
+
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        req = Request(self.base + path, data=data, method="POST" if data is not None else "GET")
+        req.add_header("Content-Type", "application/json")
+        if self.token:
+            req.add_header("X-Dock-Token", self.token)
+        with urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    def raw(self) -> dict:
+        return self._call("/api/live/raw")
+
+    def append(self, events: list[Event]) -> list[str]:
+        return self._call("/api/live/events", {"events": [e.to_dict() for e in events]}).get("appended", [])
+
+    def set_offset(self, offset: float) -> None:
+        self._call("/api/live/clock", {"offset_seconds": offset})
+
+    def reset(self) -> None:
+        self._call("/api/live/reset", {})
+
+
 class LiveRun:
     def __init__(self, root: Path, runtime: Path | None = None, wall=_wall):
+        url = os.environ.get("DOCK_LIVE_URL", "")
+        self.remote = _Remote(url, os.environ.get("DOCK_WRITE_TOKEN", "")) if url else None
         self.root = Path(root)
         self.runtime = Path(runtime or os.environ.get("DOCK_RUNTIME") or self.root / "data" / "runtime")
         self.log = EventLog(self.runtime / "live.jsonl")
@@ -56,6 +90,8 @@ class LiveRun:
 
     # clock -------------------------------------------------------------
     def offset(self) -> float:
+        if self.remote:
+            return float(self.remote.raw()["offset_seconds"])
         if not self.clock_path.exists():
             self.set_now(parse_time(START_AT))
         try:
@@ -67,8 +103,14 @@ class LiveRun:
         return (self._wall() + timedelta(seconds=self.offset() + 0.5)).replace(microsecond=0)
 
     def set_now(self, moment: datetime) -> None:
-        self.runtime.mkdir(parents=True, exist_ok=True)
         offset = (moment - self._wall()).total_seconds()
+        self.set_offset(offset)
+
+    def set_offset(self, offset: float) -> None:
+        if self.remote:
+            self.remote.set_offset(offset)
+            return
+        self.runtime.mkdir(parents=True, exist_ok=True)
         tmp = self.clock_path.with_suffix(".tmp")
         tmp.write_text(json.dumps({"offset_seconds": offset}), encoding="utf-8")
         tmp.replace(self.clock_path)
@@ -78,12 +120,25 @@ class LiveRun:
 
     # log ---------------------------------------------------------------
     def read(self) -> list[Event]:
+        if self.remote:
+            from dock_events.model import event_from_dict
+
+            return [event_from_dict(obj) for obj in self.remote.raw()["events"]]
         return self.log.read()
 
     def append(self, events: list[Event]) -> list[Event]:
+        if self.remote:
+            ids = set(self.remote.append(events))
+            return [event for event in events if event.event_id in ids]
         return list(self.log.append(events).appended)
 
+    def raw(self) -> dict:
+        return {"events": [event.to_dict() for event in self.read()], "offset_seconds": self.offset()}
+
     def reset(self) -> None:
+        if self.remote:
+            self.remote.reset()
+            return
         self.runtime.mkdir(parents=True, exist_ok=True)
         if self.log.path.exists():
             stamp = _wall().strftime("%Y%m%dT%H%M%S")
@@ -285,7 +340,7 @@ def heads_up_text(snap: dict, role: str) -> str:
     who = "Red Kettle's driver, Luis,"
     if s["phase"] in ("running", "warning"):
         return (
-            f"Heads-up on load {load['load_id']}, PO {load['reference']}. {who} has been waiting at "
+            f"Heads-up on load {load['load_id']}, {load['reference']}. {who} has been waiting at "
             f"Harbor and Rye {door}{since}. Free time ends at {s['free_time_ends_local']}, "
             f"{s['remaining_free_minutes']} minutes from now. The detention estimate so far is "
             f"${s['estimated_charge_usd']}. If the unload starts before {s['free_time_ends_local']}, it stays at zero."
