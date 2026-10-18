@@ -22,13 +22,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--audiences",
-        default="shipper,consignee",
-        help="Comma-separated roles. Default: shipper,consignee.",
+        default="",
+        help="Comma-separated roles. Default: the load's payer (shipper or consignee) plus the broker.",
     )
     args = parser.parse_args(argv)
     try:
         events = load_jsonl(sys.stdin.read())
-        audiences = tuple(part.strip() for part in args.audiences.split(",") if part.strip())
+        audiences = tuple(part.strip() for part in args.audiences.split(",") if part.strip()) or None
         produced = apply_notices(events, audiences=audiences, provider=provider_from_env())
     except (ValueError, OSError) as exc:
         print(f"dock-notify: {exc}", file=sys.stderr)

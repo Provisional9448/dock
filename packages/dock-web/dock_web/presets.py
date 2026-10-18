@@ -24,7 +24,7 @@ PRESETS = (
 )
 
 DRIVER_PROMPTS = (
-    "I'm at Harbor and Rye door 4. They are not ready to unload.",
-    "Still waiting. Door is occupied.",
+    "Checked in at receiving. No doors open, they said wait in the truck, maybe 40 min.",
+    "Still waiting. They said another 20.",
     "They started unloading.",
 )

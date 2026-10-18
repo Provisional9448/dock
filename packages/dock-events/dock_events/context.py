@@ -55,6 +55,9 @@ def arrived_payload(context: dict[str, Any]) -> dict[str, Any]:
         "consignee_party_id": consignee["party_id"],
         "consignee_phone": consignee["phone"],
         "broker_name": broker["name"],
+        "broker_contact": broker["contact"],
         "broker_party_id": broker["party_id"],
+        "broker_phone": broker["phone"],
+        "payer_role": load.get("payer_role", "shipper"),
         "truck": load["truck"],
     }

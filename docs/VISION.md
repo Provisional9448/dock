@@ -20,7 +20,7 @@ The product, in one pass:
 
 1. The driver arrives and reports, by voice or SMS, that the receiver is not ready to unload or de-van.
 2. A free-time clock starts. Early arrivals do not burn free time before the appointment.
-3. Before free time ends, and again if it does end, the agent tells the shipper and the consignee the estimate so far and what stops it.
+3. Before free time ends, and again if it does end, the agent tells whoever pays on this load (shipper or consignee, per its terms) the estimate so far and what stops it, and gives the broker the status and the record that backs the carrier's invoice.
 4. An outbound call can ask the dock for a commit time. The rules of that call are code, not a paragraph of vibes.
 5. Every step is an event. The broker can show the trail later. The trail is explicitly not an invoice and not a legal demand.
 

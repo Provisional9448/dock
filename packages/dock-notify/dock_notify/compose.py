@@ -11,13 +11,26 @@ from dock_notify.provider import LogProvider, Notifier, OutboundMessage
 _AUDIENCES = {
     "shipper": ("shipper_name", "shipper_party_id", "shipper_phone"),
     "consignee": ("consignee_name", "consignee_party_id", "consignee_phone"),
+    "broker": ("broker_name", "broker_party_id", "broker_phone"),
 }
+
+
+def default_audiences(snapshot: dict) -> tuple[str, ...]:
+    """Who gets the clock's heads-ups on this load: the PAYER (shipper or consignee, per the load's terms) gets
+    the money heads-up; the broker, when there is one, gets a status message. The non-payer gets none."""
+    payer = str(snapshot.get("payer_role") or "shipper").lower()
+    if payer not in ("shipper", "consignee"):
+        payer = "shipper"
+    out = [payer]
+    if snapshot.get("broker_party_id") and snapshot.get("broker_phone"):
+        out.append("broker")
+    return tuple(out)
 
 
 def apply_notices(
     events: list[Event],
     *,
-    audiences: tuple[str, ...] = ("shipper", "consignee"),
+    audiences: tuple[str, ...] | None = None,
     provider: Notifier | None = None,
 ) -> list[Event]:
     sender = provider or LogProvider()
@@ -25,7 +38,7 @@ def apply_notices(
     created: list[Event] = []
     for charge in [event for event in events if event.type == "charge_risk"]:
         snapshot = _snapshot(events, charge.load_id)
-        for role in audiences:
+        for role in audiences or default_audiences(snapshot):
             event_id = f"ntc-{charge.event_id}-{role}"
             if event_id in known:
                 continue
@@ -79,6 +92,8 @@ def compose_voice(snapshot: dict, charge: Event, role: str) -> str:
 
 def compose_pair(snapshot: dict, charge: Event, role: str) -> tuple[str, str]:
     """SMS body and spoken script for one charge_risk. The estimate is the clock's, not recomputed."""
+    if role == "broker":
+        return broker_status(snapshot, charge)
     name, _, _ = _who(snapshot, role)
     payload = charge.payload
     zone = str(payload["timezone"])
@@ -100,6 +115,29 @@ def compose_pair(snapshot: dict, charge: Event, role: str) -> tuple[str, str]:
         step_usd=step_usd(str(payload["rate_usd_per_hour"]), int(payload["increment_minutes"])),
         how_to_avoid=how if isinstance(how, str) else "",
     )
+
+
+def broker_status(snapshot: dict, charge: Event) -> tuple[str, str]:
+    """Broker message: status for their customer, the estimate and who pays, and that the timestamped record
+    backs the carrier's invoice. The carrier invoices; Dock does not bill."""
+    p = charge.payload
+    zone = str(p["timezone"])
+    carrier = str(snapshot["carrier_name"])
+    payer = str(snapshot.get("payer_role") or "shipper")
+    since = format_local(str(p["clock_started_at"]), zone)
+    ends = format_local(str(p["free_time_ends_at"]), zone)
+    phase = str(p["phase"])
+    if phase == "warning":
+        state = f"driver waiting since {since}; free time ends {ends}, {p['remaining_free_minutes']} min left. Estimate ${p['estimated_charge_usd']}."
+    elif phase == "accruing":
+        state = f"driver waiting since {since}; free time ended {ends}. Estimate ${p['estimated_charge_usd']} and rising."
+    else:
+        state = f"unload started; clock stopped. Estimate ${p['estimated_charge_usd']}."
+    body = (
+        f"Dock, load {charge.load_id}: {state} The {payer} pays on this load; {carrier} invoices. "
+        "The timestamped record backs the carrier's invoice."
+    )
+    return body, body
 
 
 def _template_phase(clock_phase: str, remaining_free_minutes: int) -> str:

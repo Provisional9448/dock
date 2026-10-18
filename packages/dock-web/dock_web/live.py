@@ -34,8 +34,8 @@ LIVE_PRESETS = (
 )
 
 LIVE_PROMPTS = (
-    "I'm at Harbor and Rye door 4. They are not ready to unload.",
-    "Still waiting. Door is occupied.",
+    "Checked in at receiving. No doors open, they said wait in the truck, maybe 40 min.",
+    "Still waiting. They said another 20.",
     "They started unloading.",
     "Done unloading, empty.",
 )
@@ -327,12 +327,20 @@ def heads_up_text(snap: dict, role: str) -> str:
 
     Once the clock has a charge_risk mark, the spoken script is dock-notify's compose_pair, so the call and
     the SMS say the same thing. Before the first mark (plenty of free time) Dock gives a plain status."""
-    if role in ("shipper", "consignee"):
+    s = snap["summary"]
+    load = snap["load"]
+    payer = str(load.get("payer_role") or "shipper")
+    if role in ("shipper", "consignee") and role != payer:
+        # Not the payer on this load: status only, no money (heads-ups go to the payer and the broker).
+        if s["phase"] == "not_started":
+            return f"Load {load['load_id']}: the driver has not checked in yet."
+        if s["phase"] == "closed":
+            return f"Load {load['load_id']}: unloading has started."
+        return f"Load {load['load_id']}: the driver checked in and is waiting to unload. The {payer} gets the detention heads-ups."
+    if role in ("shipper", "consignee", "broker"):
         spoken = _notify_script(snap, role)
         if spoken:
             return spoken
-    s = snap["summary"]
-    load = snap["load"]
     if s["phase"] == "not_started":
         return (
             f"Load {load['load_id']} for {load['facility']}: the driver has not checked in yet, "

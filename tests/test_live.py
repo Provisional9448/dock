@@ -43,7 +43,8 @@ def test_heads_up_and_questions_read_the_clock(run):
     desk.jump_preset("warning")
     snap = desk.snapshot()
     assert "Free time ends 4:0" in snap["heads_up"]["shipper"] and "$0.00" in snap["heads_up"]["shipper"]
-    assert "Priya Shah" in snap["heads_up"]["consignee"]
+    assert "$" not in snap["heads_up"]["consignee"]  # consignee is not the payer on LL-88421: status only
+    assert "carrier's invoice" in snap["heads_up"]["broker"]
     assert "No charges yet" in answer_question(snap, "how much is it so far?")
     desk.jump_preset("accruing")
     assert "$18.75" in desk.snapshot()["heads_up"]["shipper"]

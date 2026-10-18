@@ -224,10 +224,10 @@ Add `--replay` for the full trail up through that instant.
 
 ### dock-notify
 
-For each `charge_risk`, compose one heads-up per audience and append `notice_sent`. Default audiences are `shipper` and `consignee`. The body names the load, says "Not an invoice.", gives the estimate, and repeats `how_to_avoid` from the clock.
+For each `charge_risk`, compose one heads-up per audience and append `notice_sent`. Default audiences come from the load: the **payer** (`payer_role` in `parties.json`, shipper or consignee per the load's terms) gets the money heads-up, and the **broker** gets a status message saying the timestamped record backs the carrier's invoice. The non-payer gets no money heads-up. The carrier invoices; Dock never bills. The body names the load, says "Not an invoice.", gives the estimate, and repeats `how_to_avoid` from the clock.
 
 ```bash
-dock-notify --audiences shipper,consignee
+dock-notify                      # payer + broker by default; --audiences shipper,consignee to override
 ```
 
 `SMS_PROVIDER=log` (default) records the body on the event. `twilio` and `guava` return `status: stubbed` and do not send, even if credentials are present. See below.

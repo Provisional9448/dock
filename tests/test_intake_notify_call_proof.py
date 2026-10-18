@@ -66,9 +66,14 @@ def test_heads_up_quotes_zero_then_the_accrual(sample_dir):
     assert "Not an invoice." in warning.payload["body"]
     assert "$0.00" in warning.payload["body"]
     assert "Sam Okonkwo" in warning.payload["body"]
-    accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "consignee")
+    accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "shipper")
     assert "$18.75" in accruing.payload["body"]
-    assert "Priya Shah" in accruing.payload["body"]
+    assert "Sam Okonkwo" in accruing.payload["body"]
+    # payer-only: the shipper pays on LL-88421 (fictional terms), so the consignee gets no money heads-up
+    assert not any(event.payload["to_role"] == "consignee" for event in notices)
+    broker = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "broker")
+    assert "The shipper pays on this load; Red Kettle Freight invoices." in broker.payload["body"]
+    assert "The timestamped record backs the carrier's invoice." in broker.payload["body"]
     assert accruing.payload["delivery_status"] == "logged"
 
 

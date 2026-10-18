@@ -248,9 +248,14 @@ def test_pipe_records_sms_and_voice_without_sending(sample_dir):
     assert "$0.00" in warning.payload["voice"]
     assert "·" not in warning.payload["voice"]
     assert warning.payload["voice"] not in capture.bodies
-    accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "consignee")
+    accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "shipper")
     assert "$18.75" in accruing.payload["body"]
-    assert "Priya Shah" in accruing.payload["body"]
+    assert "Sam Okonkwo" in accruing.payload["body"]
+    # payer-only: the shipper pays on LL-88421 (fictional terms), so the consignee gets no money heads-up
+    assert not any(event.payload["to_role"] == "consignee" for event in notices)
+    broker = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "broker")
+    assert "The shipper pays on this load; Red Kettle Freight invoices." in broker.payload["body"]
+    assert "The timestamped record backs the carrier's invoice." in broker.payload["body"]
     closed = next(event for event in notices if event.payload["phase"] == "closed" and event.payload["to_role"] == "shipper")
     assert "The clock has stopped." in closed.payload["body"]
     assert "Final supported amount $56.25." in closed.payload["body"]
@@ -272,14 +277,15 @@ def test_cli_emits_notice_sent_on_stdout(sample_dir):
     notices = [event for event in load_jsonl(out) if event.type == "notice_sent"]
     assert [event.event_id for event in notices] == [
         "ntc-clk-ll-88421-warning-shipper",
-        "ntc-clk-ll-88421-warning-consignee",
+        "ntc-clk-ll-88421-warning-broker",
     ]
     assert all(event.payload["channel"] == "sms" for event in notices)
-    assert all("Not an invoice." in event.payload["voice"] for event in notices)
+    assert "Not an invoice." in notices[0].payload["voice"]
+    assert "backs the carrier's invoice" in notices[1].payload["body"]
     code, again, err = run_cli(notify_main, [], out)
     assert code == 0, err
     assert "composed 0" in err
     assert [event.event_id for event in load_jsonl(again)] == [event.event_id for event in load_jsonl(out)]
-    code, _out, err = run_cli(notify_main, ["--audiences", "broker"], dump_jsonl(clocked))
+    code, _out, err = run_cli(notify_main, ["--audiences", "carrier"], dump_jsonl(clocked))
     assert code == 1
     assert err.startswith("dock-notify:")
