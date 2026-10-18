@@ -17,18 +17,18 @@ ROLEPLAYS = {
     # so callers don't say their role; Doc greets them by name.
     "driver": (
         "You are Luis Ortega, a truck driver for Red Kettle Freight, truck 1841, on load 88421 at Harbor and Rye "
-        "Grocery DC. When Doc says 'What's going on?', say exactly: 'Checked in at the receiving window at 2:06. "
+        "Grocery DC. When Doc asks how it's going, say: 'Checked in at the receiving window at 2:06. "
         "Dana said no doors, wait in the truck, maybe 40 minutes.' You do not need directions. One short sentence "
         "per turn. When asked if there is anything else, say no, that's it. Do not hang up until Doc says bye."
     ),
     "driver-update": (
-        "You are Luis Ortega, the driver on load 88421, calling Doc back. When Doc asks what's going on, say: "
+        "You are Luis Ortega, the driver on load 88421, calling Doc back. When Doc asks how it's going, say: "
         "'Still waiting. Dana says another 20.' One short sentence per turn. When asked if there is anything else, "
         "say no, that's it. Do not hang up until Doc says bye."
     ),
     "shipper": (
         "You are Sam Okonkwo at Northwind Orchards, the shipper on load 88421; on this load the shipper pays "
-        "detention. When Doc asks what's up, say: 'Any update on my load?' Listen. When asked what you want to do, "
+        "detention. When Doc asks what it can do for you, say: 'Any update on my load?' Listen. When asked what you want to do, "
         "say you'll call Harbor and Rye receiving now. When asked if there is anything else, say no, that's it. "
         "Do not hang up until Doc says bye."
     ),
@@ -43,7 +43,7 @@ ROLEPLAYS = {
         "anything else, say no. Do not hang up until Doc says bye."
     ),
     "broker": (
-        "You are Alex Kim at Lantern Lane Logistics, the broker on load 88421. When Doc asks what's up, ask where "
+        "You are Alex Kim at Lantern Lane Logistics, the broker on load 88421. When Doc asks what it can do for you, ask where "
         "the load stands. One short sentence per turn. Say yes to the timestamps. When asked if there is anything "
         "else, say no. Do not hang up until Doc says bye."
     ),

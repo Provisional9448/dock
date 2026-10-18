@@ -113,7 +113,7 @@ def test_agent_handlers_with_mockcall(run):
     except Exception as exc:  # the SDK wants Guava credentials even to build an agent
         pytest.skip(f"no Guava credentials: {exc}")
     answer = agent._on_question(MockCall(), "any update?")
-    assert "hasn't checked in" in answer and "no clock" in answer
+    assert "hasn't checked in" in answer and "no detention clock" in answer
 
     run.set_now(parse_time("2026-10-17T18:05:30Z"))  # caller is a minute ahead of the demo clock
     driver = MockCall()
@@ -134,7 +134,7 @@ def test_agent_handlers_with_mockcall(run):
     readback = driver_readback(LiveDesk(run).snapshot(), "arrived", {
         "at_local": "2:06 PM ET", "said_by": "Dana at the receiving window", "said": "x",
         "estimate_minutes": 40, "eta_local": "2:46 PM ET"})
-    assert readback.startswith("Got it, checked in 2:06, Dana")
+    assert readback.startswith("Okay, you checked in at 2:06 and Dana")
     assert " ET" not in readback and "$" not in readback and "free time" not in readback.lower()
     agent._on_task_complete_handlers["wrapup"](driver)
     assert "hang up" in driver._command_queue[-1].instruction
@@ -166,7 +166,7 @@ def test_driver_call_flow_check_in_update_unload(run):
     snap = LiveDesk(run).snapshot()
     assert snap["summary"]["free_time_ends_local"].startswith("4:06")
     reply = driver_readback(snap, rec["status"], rec)
-    assert "checked in 2:06" in reply and "Dana at receiving said" in reply and "$" not in reply
+    assert "checked in at 2:06" in reply and "Dana at receiving said" in reply and "$" not in reply
 
     run.set_now(parse_time("2026-10-17T19:30:00Z"))
     events, rec = log_driver(run, "waiting", said_by="Dana", said="another 20", estimate_minutes=parse_minutes("another 20"))
@@ -253,7 +253,7 @@ def test_driver_readback_survives_desk_403(tmp_path, monkeypatch):
     agent._on_task_complete_handlers["driver_report"](call)
     assert time.monotonic() - started < 3
     said = " ".join(str(getattr(c, "script", "")) + str(getattr(c, "instruction", "")) + str(getattr(c, "task", "")) + repr(c) for c in call._command_queue)
-    assert "Got it, checked in 2:06" in said and "$75" not in said
+    assert "Okay, you checked in at 2:06" in said and "$75" not in said
     assert "Anything else?" in said
     for _ in range(100):
         spool = tmp_path / "spool.jsonl"
@@ -306,8 +306,8 @@ def test_spoken_polish_name_zero_and_steps(run):
     from dock_voice.script import goodbye_line
 
     assert spoken("Thanks, Louise. Checked in at 02:06 PM ET.") == "Thanks, Luis. Checked in at 2:06 PM Eastern."
-    assert goodbye_line("driver") == "Thanks Luis, talk soon."
-    assert goodbye_line("shipper") == "Thanks Sam, bye." and "load record" not in goodbye_line("broker")
+    assert goodbye_line("driver") == "Thanks Luis. Bye."
+    assert goodbye_line("shipper") == "Thanks Sam. Bye." and "load record" not in goodbye_line("broker")
     run.set_now(parse_time("2026-10-17T18:08:00Z"))
     log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
     from dock_voice.script import shipper_brief
@@ -329,8 +329,8 @@ def test_wrapup_says_goodbye_once_with_luis(run):
     call.set_variable("role", "driver")
     agent._on_task_complete_handlers["wrapup"](call)
     final = call._command_queue[-1].instruction
-    assert "Thanks Luis, talk soon." in final
-    assert "Do not add thanks" in final and final.count("talk soon") == 1
+    assert "Thanks Luis. Bye." in final
+    assert "Do not add thanks" in final and final.count("Bye.") == 1
 
 
 def test_take3_read_back_is_short_and_clerk_is_never_asked(run):
@@ -345,7 +345,7 @@ def test_take3_read_back_is_short_and_clerk_is_never_asked(run):
     rec = {"at_local": "2:06 PM ET", "said_by": "Dana", "said": "wait in the truck, maybe 40 minutes",
            "estimate_minutes": 40, "eta_local": "2:46 PM ET"}
     text = driver_readback(LiveDesk(run).snapshot(), "arrived", rec)
-    assert text.startswith("Got it, checked in 2:06") and text.endswith("Anything else?")
+    assert text.startswith("Okay, you checked in at 2:06") and text.endswith("Anything else?")
     assert len(text.split()) <= 45, len(text.split())
     assert "02:" not in text and "Louise" not in text
     try:
@@ -393,8 +393,8 @@ def test_role_driver_no_money(run):
     snap = _checked_in(run)
     text = driver_readback(snap, "arrived", {"at_local": "2:06 PM ET", "said_by": "Dana",
                                              "said": "wait in the truck, about 40 minutes"})
-    assert text == ("Got it, checked in 2:06, Dana said wait in the truck, about 40 minutes. "
-                    "Call me when they pull you in. Anything else?")
+    assert text == ("Okay, you checked in at 2:06 and Dana said wait in the truck, about 40 minutes. "
+                    "Give me a call when they start unloading. Anything else?")
 
 
 def test_role_shipper_payer_gets_cutoff_cost_and_action(run):
@@ -403,9 +403,10 @@ def test_role_shipper_payer_gets_cutoff_cost_and_action(run):
     snap = _checked_in(run)
     assert payer_role(snap) == "shipper"  # fictional per-load terms in parties.json
     text = shipper_brief(snap)
-    assert text.startswith("Luis checked in at Harbor and Rye at 2:06 Eastern, they told him about 40 minutes.")
-    assert "Free time runs out at 4:06" in text and "$75 an hour" in text
-    assert text.endswith("Want to give Harbor and Rye receiving a call and call me back with what they say?")
+    # situation, free-time end, rate, ask them to check in, we'll call back if charges start
+    assert text.startswith("Luis is waiting for a door at Harbor and Rye. He checked in at 2:06 Eastern")
+    assert "Free time ends at 4:06" in text and "detention is $75 an hour" in text
+    assert "Could you check in with Harbor and Rye?" in text and text.endswith("I'll call you if charges start.")
     assert "Dock will bill" not in text
 
 
@@ -414,7 +415,7 @@ def test_role_consignee_status_only_when_not_payer(run):
 
     snap = _checked_in(run)
     text = consignee_brief(snap)
-    assert text.startswith("Luis from Red Kettle checked in at your window at 2:06.")
+    assert text.startswith("Luis from Red Kettle checked in at your receiving window at 2:06 and is waiting for a door.")
     assert "wait in the truck, about 40 minutes" in text and "$" not in text
     snap["load"]["payer_role"] = "consignee"
     assert "$75 an hour" in consignee_brief(snap)
@@ -426,8 +427,8 @@ def test_role_broker_status_exposure_and_carrier_invoices(run):
     from dock_voice.script import broker_brief
 
     text = broker_brief(_checked_in(run))
-    assert text.startswith("Luis checked in at 2:06 Eastern") and "waiting on a door" in text and "$75 an hour" in text
-    assert "The shipper pays on this one, and Red Kettle bills off our timestamps." in text
+    assert text.startswith("Luis is waiting for a door at Harbor and Rye.") and "$75 an hour" in text
+    assert "The shipper pays detention on this load, and Red Kettle will invoice from our timestamps." in text
     assert "Dock will bill" not in text
 
 
@@ -452,9 +453,9 @@ def test_driver_update_queues_payer_call_and_broker_message(run):
     payer, broker = notes
     assert payer.payload["to_role"] == "shipper" and payer.payload["outcome"] == "dry_run"
     assert payer.payload["summary"].startswith("Heads-up call to shipper (outbound disabled in demo): ")
-    assert "Free time runs out at 4:06" in payer.payload["summary"]
+    assert "Free time ends at 4:06" in payer.payload["summary"]
     assert broker.payload["to_role"] == "broker" and broker.actor.channel == "sms"
-    assert broker.payload["summary"].startswith("Message to broker") and "Red Kettle bills off our timestamps" in broker.payload["summary"]
+    assert broker.payload["summary"].startswith("Message to broker") and "Red Kettle will invoice from our timestamps" in broker.payload["summary"]
     rows = [row["event"] for row in LiveDesk(run).snapshot()["events"]]
     assert sum(1 for r in rows if r["type"] == "call_result") == 2
 
@@ -477,7 +478,7 @@ def test_shipper_call_back_logs_receiver_promise_and_messages_broker(run):
     call.set_field("news", "I called the warehouse manager and they'll have him in door 4 in 20 minutes")
     agent._on_task_complete_handlers["shipper_open"](call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Got it, the warehouse manager says door 4 by 2:30. I'll let Lantern Lane know. Anything else?" in said
+    assert "Thanks. So the warehouse manager says door 4 by 2:30. I'll pass that on to Lantern Lane. Anything else?" in said
     events = _wait_for(run, 4)
     promise, broker = [e for e in events if e.type == "call_result"][-2:]
     assert promise.payload["goal"] == "receiver_promise" and promise.occurred_at == "2026-10-17T18:10:00Z"
@@ -497,8 +498,8 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     assert caller_party(ctx, "+15555550141", env={})["role"] == "broker"
     assert caller_party(ctx, "+15555550151", env={})["role"] == "driver"  # carrier dispatch -> driver path
     assert caller_party(ctx, "+14155550000", env={}) is None and caller_party(ctx, None, env={}) is None
-    assert greeting("driver") == "Hey Luis, Doc on 8 8 4 2 1. Automated line, it's recorded. What's going on?"
-    assert greeting(None).endswith("Who's this?")
+    assert greeting("driver").startswith("Hi Luis, it's Doc") and "automated" in greeting("driver") and "recorded" in greeting("driver")
+    assert greeting(None).endswith("Who am I speaking with?")
 
     from guava.testing import MockCall
     from guava.types.call_info import PSTNCallInfo
@@ -513,18 +514,18 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     call = MockCall(call_info=PSTNCallInfo(from_number="+12053516709", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Hey Luis, Doc on 8 8 4 2 1" in said and "driver_report" in said and "Who's this" not in said
+    assert "Hi Luis, it's Doc" in said and "driver_report" in said and "Who am I speaking" not in said
 
     monkeypatch.setenv("DOCK_CALLER_ROLE", "shipper")
     call = MockCall(call_info=PSTNCallInfo(from_number="+12053516709", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Hey Sam, Doc on 8 8 4 2 1" in said and "shipper_open" in said
+    assert "Hi Sam, it's Doc" in said and "shipper_open" in said
 
     call = MockCall(call_info=PSTNCallInfo(from_number="+14155550000", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Who's this" in said and "'who'" in said
+    assert "Who am I speaking with?" in said and "'who'" in said
 
 
 def test_lines_sound_like_a_dispatcher(run):

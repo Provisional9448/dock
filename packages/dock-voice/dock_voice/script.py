@@ -109,9 +109,9 @@ def caller_party(context: dict, number: object, env: dict | None = None) -> dict
 def greeting(role: str | None) -> str:
     """First thing the line says. Known caller: by name, like a dispatcher picking up. Unknown: who's this?"""
     if role in NAMES:
-        ask = "What's going on?" if role == "driver" else "What's up?"
-        return f"Hey {NAMES[role]}, Doc on {LOAD_SPOKEN}. Automated line, it's recorded. {ask}"
-    return f"Hey, Doc on {LOAD_SPOKEN}, Red Kettle's automated line, it's recorded. Who's this?"
+        ask = "How's it going there?" if role == "driver" else "What can I do for you?"
+        return f"Hi {NAMES[role]}, it's Doc, Red Kettle's automated line, on load {LOAD_SPOKEN}. Calls are recorded. {ask}"
+    return f"Hi, this is Doc, Red Kettle's automated line for load {LOAD_SPOKEN}. Calls are recorded. Who am I speaking with?"
 
 
 def span_words(minutes: int | None) -> str:
@@ -134,17 +134,17 @@ def money_line(snap: dict) -> str:
     per_hour = str(rate["rate_usd_per_hour"]).removesuffix(".00")
     if s["phase"] in ("running", "warning"):
         return (
-            f"Free time runs out at {hm_zone(s['free_time_ends_local'])}, about {span_words(s['remaining_free_minutes'])} "
+            f"Free time ends at {hm_zone(s['free_time_ends_local'])}, about {span_words(s['remaining_free_minutes'])} "
             f"from now. Nothing owed yet; after that it's ${per_hour} an hour."
         )
     if s["phase"] == "accruing":
         return (
-            f"Free time ran out at {hm_zone(s['free_time_ends_local'])}. It's about ${s['estimated_charge_usd']} so far, "
+            f"Free time ended at {hm_zone(s['free_time_ends_local'])}. It's about ${s['estimated_charge_usd']} so far at "
             f"${per_hour} an hour. That's an estimate, not a bill."
         )
     if s["phase"] == "closed":
-        return f"Clock's stopped, about ${s['estimated_charge_usd']} of detention. That's an estimate, not a bill."
-    return "No clock running yet."
+        return f"The clock has stopped at about ${s['estimated_charge_usd']} of detention. That's an estimate, not a bill."
+    return "No detention clock is running yet."
 
 
 _NUMBER_WORDS = {
@@ -246,19 +246,19 @@ def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
     said_by = r.get("said_by") or "they"
     said = (r.get("said") or "").strip().rstrip(".")
     if said:
-        told = f", {said_by} said {said}"
+        told = f" and {said_by} said {said}"
     elif r.get("estimate_minutes"):
-        told = f", {said_by} said about {r['estimate_minutes']}"
+        told = f" and {said_by} said about {r['estimate_minutes']} minutes"
     else:
         told = ""
     if status == "arrived":
-        text = f"Got it, checked in {at}{told}. Call me when they pull you in. Anything else?"
+        text = f"Okay, you checked in at {at}{told}. Give me a call when they start unloading. Anything else?"
     elif status == "waiting":
-        text = f"Got it, still waiting as of {at}{told}. Call me when they pull you in. Anything else?"
+        text = f"Okay, still waiting as of {at}{told}. Let me know when they start. Anything else?"
     elif status == "unload_started":
-        text = f"Got it, they started unloading at {at}. Call me when you're empty. Anything else?"
+        text = f"Okay, unloading started at {at}. Let me know when you're done. Anything else?"
     else:
-        text = f"Got it, empty at {at}. Anything else?"
+        text = f"Okay, unloaded at {at}. Anything else?"
     return spoken(text)
 
 
@@ -300,35 +300,34 @@ def _money(snap: dict) -> str:
     s = snap["summary"]
     if s["phase"] in ("running", "warning"):
         return (
-            f"Free time runs out at {hm(s['free_time_ends_local'])}, so about {span_words(s['remaining_free_minutes'])} "
-            f"left. After that {_carrier(snap)} charges {_rate(snap)}."
+            f"Free time ends at {hm(s['free_time_ends_local'])}, about {span_words(s['remaining_free_minutes'])} from "
+            f"now. After that, detention is {_rate(snap)}."
         )
     if s["phase"] == "accruing":
         return (
-            f"Free time ran out at {hm(s['free_time_ends_local'])}. It's about ${s['estimated_charge_usd']} so far, "
-            f"{_rate(snap)}, till they start unloading."
+            f"Free time ended at {hm(s['free_time_ends_local'])}, so detention is running at {_rate(snap)}, "
+            f"about ${s['estimated_charge_usd']} so far."
         )
     if s["phase"] == "closed":
-        return f"Clock stopped at about ${s['estimated_charge_usd']} of detention."
+        return f"Detention came to about ${s['estimated_charge_usd']}."
     return ""
 
 
 def _status(snap: dict) -> str:
     s, d = snap["summary"], _driver_report(snap)
     if not d["checked_in"]:
-        return "Luis hasn't checked in yet."
+        return "Luis hasn't checked in at Harbor and Rye yet."
     if s["phase"] == "closed":
-        return f"Luis checked in at {hm_zone(d['checked_in'])}, and they're unloading him now."
-    told = _told(d)
-    return f"Luis checked in at {hm_zone(d['checked_in'])}{told}, waiting on a door."
+        return f"Luis checked in at Harbor and Rye at {hm_zone(d['checked_in'])}, and they're unloading him now."
+    return f"Luis is waiting for a door at Harbor and Rye. He checked in at {hm_zone(d['checked_in'])}{_told(d)}."
 
 
 def _told(d: dict) -> str:
     m = re.search(r"(\d+)\s*min", d.get("said") or "")
     if m:
-        return f", they told him about {m.group(1)} minutes"
+        return f"; they told him about {m.group(1)} minutes"
     if d.get("eta"):
-        return f", they said around {hm(d['eta'])}"
+        return f"; they said around {hm(d['eta'])}"
     return ""
 
 
@@ -336,14 +335,14 @@ def shipper_brief(snap: dict) -> str:
     """Shipper: on time? If the shipper pays on this load: will it cost me and what to do (call the DC).
     Otherwise status only."""
     s, d = snap["summary"], _driver_report(snap)
-    if d["checked_in"] and s["phase"] in ("running", "warning", "accruing"):
-        text = f"Luis checked in at Harbor and Rye at {hm_zone(d['checked_in'])}{_told(d)}."
-    else:
-        text = _status(snap)
+    text = _status(snap)
     if payer_role(snap) == "shipper" and s["phase"] != "not_started":
         text += " " + _money(snap)
         if s["phase"] in ("running", "warning", "accruing"):
-            text += " Want to give Harbor and Rye receiving a call and call me back with what they say?"
+            text += (
+                " Could you check in with Harbor and Rye? If they give you a time, let me know. "
+                "I'll call you if charges start."
+            )
     return spoken(text)
 
 
@@ -351,7 +350,7 @@ def promise_readback(promise: dict) -> str:
     who = promise["who"]
     who = who if who.startswith(("the ", "receiving")) else f"the {who}"
     door = f" {promise['door']}" if promise.get("door") else ""
-    return spoken(f"Got it, {who} says{door} by {hm(promise['eta_local'])}. I'll let Lantern Lane know. Anything else?")
+    return spoken(f"Thanks. So {who} says{door} by {hm(promise['eta_local'])}. I'll pass that on to Lantern Lane. Anything else?")
 
 
 def consignee_brief(snap: dict) -> str:
@@ -360,8 +359,8 @@ def consignee_brief(snap: dict) -> str:
     s, d = snap["summary"], _driver_report(snap)
     if not d["checked_in"]:
         return spoken("Luis from Red Kettle hasn't checked in with you yet.")
-    told = f" He says your team told him {d['said'].rstrip('.')}." if d["said"] else ""
-    text = f"Luis from Red Kettle checked in at your window at {hm(d['checked_in'])}.{told}"
+    told = f" Your team told him: {d['said'].rstrip('.')}." if d["said"] else ""
+    text = f"Luis from Red Kettle checked in at your receiving window at {hm(d['checked_in'])} and is waiting for a door.{told}"
     if payer_role(snap) == "consignee" and s["phase"] != "not_started":
         text += " " + _money(snap)
     return spoken(text)
@@ -374,16 +373,14 @@ def broker_brief(snap: dict) -> str:
     text = _status(snap)
     if s["phase"] != "not_started":
         text += " " + _money(snap)
-    text += f" The {payer} pays on this one, and {_carrier(snap)} bills off our timestamps."
+    text += f" The {payer} pays detention on this load, and {_carrier(snap)} will invoice from our timestamps."
     return spoken(text)
 
 
 def goodbye_line(role: str) -> str:
     """The one closing line. Spoken once, with the right name."""
-    if role == "driver":
-        return "Thanks Luis, talk soon."
     who = f" {NAMES[role]}" if role in NAMES else ""
-    return f"Thanks{who}, bye."
+    return f"Thanks{who}. Bye."
 
 
 def driver_reply(snap: dict, status: str, record: dict | None = None) -> str:
@@ -397,7 +394,7 @@ def answer_question(snap: dict, question: str) -> str:
     rate = snap["policy"]
     parts = [f"It's {hm_zone(snap['clock_local'])}."]
     if s["phase"] == "not_started":
-        parts.append("Luis hasn't checked in yet, so no clock's running.")
+        parts.append("Luis hasn't checked in yet, so there's no detention clock running.")
     else:
         parts.append(_status(snap))
         parts.append(money_line(snap))

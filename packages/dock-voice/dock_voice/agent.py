@@ -46,7 +46,8 @@ log = logging.getLogger("dock-voice")
 
 DISCLOSURE = greeting(None)  # unknown caller; known callers get greeting(role)
 STYLE = (
-    " Talk like a dispatcher on the phone: short, casual, plain. Never say 'load trail', 'load record', 'logged', "
+    " Talk like a person on the phone: short, plain, natural. State the situation and give each caller only what "
+    "they act on. Never say 'load trail', 'load record', 'logged', "
     "'timestamped', 'automated AI assistant', 'one moment' or 'processing'."
 )
 
@@ -165,7 +166,7 @@ def build_agent(run: LiveRun):
                         "Luis is the driver, Sam the shipper, Priya the consignee, Alex the broker), fill this in "
                         "without asking."
                     ),
-                    question="Who's this, the driver, shipper, receiver, or broker?",
+                    question="Are you the driver, shipper, receiver, or broker?",
                 )
             ],
         )
@@ -233,14 +234,14 @@ def build_agent(run: LiveRun):
                             "Clock time it happened, written like 2:06 PM: when he checked in at the receiving "
                             "window, or when the unload started or finished. For still waiting, write now."
                         ),
-                        question="What time'd you check in?",
+                        question="What time did you check in?",
                         required=False,
                     ),
                     guava.Field(
                         key="said",
                         field_type="text",
                         description="What the receiver told him, close to his words, including any time estimate.",
-                        question="What'd they tell you, how long?",
+                        question="What did they tell you, and how long?",
                         required=False,
                     ),
                     guava.Field(
@@ -251,7 +252,7 @@ def build_agent(run: LiveRun):
                             "Infer from what he said: checked in and told to wait means 'checked in, waiting for "
                             "a door'. Ask only if it is truly unclear."
                         ),
-                        question="Still waiting on a door, or are they unloading you?",
+                        question="Are you still waiting, or have they started unloading?",
                     ),
                     guava.Field(
                         key="said_by",
@@ -271,7 +272,7 @@ def build_agent(run: LiveRun):
             call.set_task(
                 "shipper_open",
                 objective=(
-                    "Shipper call. Doc already asked what's up; just listen. If they say what the warehouse or "
+                    "Shipper call. Doc already asked how it can help; just listen. If they say what the warehouse or "
                     "receiving told them (door, time, who), write it down. If they're just checking in, write that."
                     + STYLE
                 ),
@@ -306,7 +307,7 @@ def build_agent(run: LiveRun):
                             "What they will do, or what the warehouse / receiving told them (who said it, door, time), "
                             "close to their words."
                         ),
-                        question="What do you want to do?" if payer else "Need anything else on this one?",
+                        question="Can you check with them?" if payer else "Anything else you need on this load?",
                         required=payer,
                     ),
                 ],
@@ -327,7 +328,7 @@ def build_agent(run: LiveRun):
                         key="door_time",
                         field_type="text",
                         description="Door and the time unloading will start or did start, e.g. 'door 4 at 2:50 PM' or 'started at 4:48'.",
-                        question="What door, and when do you think you'll get him in? Or is he in already?",
+                        question="Which door, and about when can you get him in? Or has unloading started?",
                     ),
                 ],
             )
@@ -340,7 +341,7 @@ def build_agent(run: LiveRun):
                 guava.Field(
                     key="anything_else",
                     field_type="text",
-                    question="Want me to send you the timestamps?",
+                    question="Would you like the timestamps sent over?",
                     required=False,
                 ),
             ],
@@ -374,7 +375,7 @@ def build_agent(run: LiveRun):
             log.exception("driver path failed; speaking a fallback read-back")
         if not readback:
             readback = spoken(
-                "Got it, Luis. Call me when they pull you in. Anything else?"
+                "Okay Luis, I have your update. Give me a call when they start unloading. Anything else?"
             )
         wrap_up(call, readback)
 
@@ -383,7 +384,7 @@ def build_agent(run: LiveRun):
         answer = str(call.get_field("door_time") or "")
         zone = run.context["load"].get("timezone", "America/New_York")
         post_later(run, [], "consignee", write=lambda _e: log_receiver(run, answer, zone))
-        wrap_up(call, spoken("Got it, thanks. Anything else?"))
+        wrap_up(call, spoken("Thanks, I have that. Anything else?"))
 
     @agent.on_task_complete("heads_up")
     def on_heads_up(call: guava.Call) -> None:
@@ -406,7 +407,7 @@ def build_agent(run: LiveRun):
                 call_id=str(call.id), to_role=to_role, body=body, reply=plan, summary=snap["summary"]
             ),
         )
-        wrap_up(call, "Sounds good. Anything else?")
+        wrap_up(call, "Thanks. Anything else?")
 
     @agent.on_task_complete("shipper_open")
     def on_shipper_open(call: guava.Call) -> None:
