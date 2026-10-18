@@ -5,6 +5,7 @@ from __future__ import annotations
 from dock_events.model import Actor, Event
 from dock_events.timeutil import format_local
 
+from dock_notify.messages import format_place, notice_text, step_usd
 from dock_notify.provider import LogProvider, Notifier, OutboundMessage
 
 _AUDIENCES = {
@@ -28,7 +29,7 @@ def apply_notices(
             event_id = f"ntc-{charge.event_id}-{role}"
             if event_id in known:
                 continue
-            body = compose_notice(snapshot, charge, role)
+            body, voice = compose_pair(snapshot, charge, role)
             name, party_id, phone = _who(snapshot, role)
             receipt = sender.send(
                 OutboundMessage(
@@ -54,6 +55,7 @@ def apply_notices(
                         "to_role": role,
                         "to_name": name,
                         "body": body,
+                        "voice": voice,
                         "estimated_charge_usd": charge.payload["estimated_charge_usd"],
                         "phase": charge.payload["phase"],
                         "provider": receipt.provider,
@@ -68,56 +70,46 @@ def apply_notices(
 
 
 def compose_notice(snapshot: dict, charge: Event, role: str) -> str:
+    return compose_pair(snapshot, charge, role)[0]
+
+
+def compose_voice(snapshot: dict, charge: Event, role: str) -> str:
+    return compose_pair(snapshot, charge, role)[1]
+
+
+def compose_pair(snapshot: dict, charge: Event, role: str) -> tuple[str, str]:
+    """SMS body and spoken script for one charge_risk. The estimate is the clock's, not recomputed."""
     name, _, _ = _who(snapshot, role)
     payload = charge.payload
-    zone = payload["timezone"]
-    since = format_local(payload["clock_started_at"], zone)
-    ends = format_local(payload["free_time_ends_at"], zone)
-    appointment = snapshot.get("appointment_at")
-    when = format_local(appointment, zone) if isinstance(appointment, str) else "unknown"
-    charge_text = payload["estimated_charge_usd"]
-    step = _step(payload)
-    phase = payload["phase"]
-    lines = [
-        f"Dock, load {charge.load_id}. Not an invoice.",
-        "",
-        (
-            f"{snapshot['driver_name']} ({snapshot['carrier_name']}) has been at "
-            f"{snapshot['facility']} since {since}. Appointment was {when}."
-        ),
-        "",
-    ]
-    if phase == "warning":
-        lines.append(
-            f"Free time ends {ends}. Time left: {payload['remaining_free_minutes']} min. "
-            f"Detention on this trail so far: ${charge_text}."
-        )
-        lines.append(
-            f"After free time the trail uses ${payload['rate_usd_per_hour']}/hour "
-            f"in {payload['increment_minutes']}-minute steps (${step} each)."
-        )
-        lines.append("")
-        lines.append(payload["how_to_avoid"])
-    elif phase == "accruing":
-        lines.append(
-            f"Free time ended {ends}. Unload has not started. "
-            f"Detention on this trail so far: ${charge_text} "
-            f"({payload['billable_minutes']} billable minutes)."
-        )
-        lines.append("")
-        lines.append(payload["how_to_avoid"])
-        lines.append(f"Every further {payload['increment_minutes']} minutes on the trail is another ${step}.")
-    else:
-        lines.append(
-            f"The clock has stopped. This trail supports ${charge_text} "
-            f"({payload['billable_minutes']} billable minutes after {payload['free_minutes']} minutes free, "
-            f"at ${payload['rate_usd_per_hour']}/hour)."
-        )
-        lines.append("")
-        lines.append(payload["how_to_avoid"])
-    lines.append("")
-    lines.append(f"{name}: reply with a time someone will meet the driver.")
-    return "\n".join(lines)
+    zone = str(payload["timezone"])
+    facility = snapshot.get("facility")
+    if not isinstance(facility, str) or not facility.strip():
+        raise ValueError(f"no facility on the arrived event for {charge.load_id}")
+    phase = _template_phase(str(payload["phase"]), int(payload["remaining_free_minutes"]))
+    how = payload.get("how_to_avoid")
+    return notice_text(
+        load_id=charge.load_id,
+        carrier_name=str(snapshot["carrier_name"]),
+        place=format_place(facility, ""),
+        contact_name=name,
+        phase=phase,
+        estimated_charge_usd=str(payload["estimated_charge_usd"]),
+        free_end_label=format_local(str(payload["free_time_ends_at"]), zone),
+        since_label=format_local(str(payload["clock_started_at"]), zone),
+        increment_minutes=int(payload["increment_minutes"]),
+        step_usd=step_usd(str(payload["rate_usd_per_hour"]), int(payload["increment_minutes"])),
+        how_to_avoid=how if isinstance(how, str) else "",
+    )
+
+
+def _template_phase(clock_phase: str, remaining_free_minutes: int) -> str:
+    if clock_phase == "closed":
+        return "closed"
+    if clock_phase == "accruing":
+        return "accruing"
+    if remaining_free_minutes <= 0:
+        return "free_ended"
+    return "warning"
 
 
 def _snapshot(events: list[Event], load_id: str) -> dict:
@@ -137,12 +129,3 @@ def _who(snapshot: dict, role: str) -> tuple[str, str, str]:
     return name, snapshot[id_key], snapshot[phone_key]
 
 
-def _step(payload: dict) -> str:
-    from decimal import Decimal, ROUND_HALF_UP
-
-    amount = (
-        Decimal(payload["rate_usd_per_hour"])
-        * Decimal(payload["increment_minutes"])
-        / Decimal(60)
-    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return f"{amount:.2f}"
