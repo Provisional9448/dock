@@ -12,7 +12,9 @@ cat data/samples/board/LL-*.jsonl \
 uv run python data/samples/board/check_board.py
 ```
 
-`dock-clock` drops facts after `--as-of`. The only later fact in this set is Omar Haddad's arrival (`LL-88450` at 4:15 PM ET). He is early for a 4:30 PM appointment, so free time starts at the appointment. His 3:30 PM text ("About 45 out.") is a `call_result` with `goal: driver_eta`. A `delay_reported` with no arrival would start the clock at the text.
+Every fact in these files is at or before the demo clock. Omar Haddad (`LL-88450`) is en route: his 3:30 PM text ("About 45 out.") is a `call_result` with `goal: driver_eta`, ETA 4:15 PM ET, appointment 4:30 PM ET. The file has no `arrived` line. A `delay_reported` with no arrival would start the clock.
+
+`LL-88421` uses `evt_board_arrive_ll88421` and `evt_board_delay_ll88421`. Those facts differ from `data/samples/harbor-rye.raw.jsonl`, which already owns `evt_arrive_ll88421` and `evt_delay_ll88421`.
 
 `facility` is the DC name. `payload.door` is the door (`door 4`, and so on). Omar has no door; the row is the appointment. Cities are `City, ST`, the same shape as the Harbor & Rye sample.
 

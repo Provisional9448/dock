@@ -10,10 +10,11 @@ Heads-ups on the strip are the five voice notice_sent lines already in the
 files (inbound calls). dock-notify would compose extra SMS on read; those are
 not part of the "5 logged from inbound calls" count.
 
-Identity (driver, facility, door, appointment) lives on arrived. Omar's
-arrived line is his 4:15 PM ET ETA, so a replay at 3:50 PM holds it back and
-the clock stays off. His 3:30 PM text is a driver_eta call_result, because a
-delay_reported with no arrival would start the clock.
+Identity (driver, facility, door, appointment) lives on arrived, except
+LL-88450. Omar is en route: his 3:30 PM text is a driver_eta call_result, and
+the file has no arrived line. A delay_reported with no arrival would start
+the clock. LL-88421 uses evt_board_arrive_ll88421 and evt_board_delay_ll88421
+so those ids do not collide with data/samples/harbor-rye.raw.jsonl.
 """
 
 from __future__ import annotations
@@ -191,8 +192,9 @@ def test_dispatcher_board() -> None:
     for spec in EXPECTED:
         load_id = spec["load_id"]
         summary = _summary(by_load[load_id], moment, ZONE)
-        arrived = _only(raw[load_id], "arrived")
         update = _last_driver_update(raw[load_id], moment)
+        arrived = [event for event in raw[load_id] if event.type == "arrived"]
+        identity = arrived[0] if arrived else update
         row = {
             "load_id": load_id,
             "phase": summary["phase"],
@@ -204,7 +206,11 @@ def test_dispatcher_board() -> None:
             "free_end": _free_end(by_load[load_id]),
         }
         rows.append(row)
-        _expect_identity(spec, arrived, update)
+        if spec["phase"] == "not_started":
+            assert arrived == []
+        else:
+            assert len(arrived) == 1
+        _expect_identity(spec, identity, update)
         _expect_clock(spec, summary, by_load[load_id])
 
     accruing = [row for row in rows if row["phase"] == "accruing"]
@@ -232,6 +238,7 @@ def test_dispatcher_board() -> None:
     assert not any(event.load_id in quiet for event in notices)
 
     _expect_story_beats(raw, policy)
+    _expect_distinct_ids(raw)
 
 
 def _expect_identity(spec: dict, arrived: Event, update: Event) -> None:
@@ -311,17 +318,15 @@ def _expect_story_beats(raw: dict[str, list[Event]], policy: DetentionPolicy) ->
     assert tom["phase"] == "running"
 
     omar = raw["LL-88450"]
-    eta = parse_time("2026-10-17T20:15:00Z")
-    appt = parse_time("2026-10-17T20:30:00Z")
-    assert not any(event.type == "clock_started" for event in replay_clock(omar, as_of=eta, policy=policy))
-    at_appt = replay_clock(omar, as_of=appt, policy=policy)
-    clock = next(event for event in at_appt if event.type == "clock_started")
-    assert clock.payload["anchor"] == "appointment"
-    assert clock.payload["clock_started_at"] == "2026-10-17T20:30:00Z"
-    opened = _summary(at_appt, appt, ZONE)
-    assert opened["phase"] == "running"
-    assert opened["remaining_free_minutes"] == FREE_MINUTES
-    assert opened["estimated_charge_usd"] == "0.00"
+    assert not any(event.type == "arrived" for event in omar)
+    eta_note = _only(omar, "call_result")
+    assert eta_note.payload["goal"] == "driver_eta"
+    assert eta_note.payload["status"] == "en_route"
+    assert eta_note.payload["eta_at"] == "2026-10-17T20:15:00Z"
+    assert eta_note.payload["appointment_at"] == "2026-10-17T20:30:00Z"
+    for stamp in (AS_OF, "2026-10-17T20:15:00Z", "2026-10-17T20:30:00Z"):
+        projected = replay_clock(omar, as_of=parse_time(stamp), policy=policy)
+        assert not any(event.type == "clock_started" for event in projected)
 
     future = [
         event
@@ -329,7 +334,18 @@ def _expect_story_beats(raw: dict[str, list[Event]], policy: DetentionPolicy) ->
         for event in events
         if parse_time(event.occurred_at) > parse_time(AS_OF)
     ]
-    assert [(event.load_id, event.type) for event in future] == [("LL-88450", "arrived")]
+    assert future == []
+
+
+def _expect_distinct_ids(raw: dict[str, list[Event]]) -> None:
+    sample = load_jsonl((HERE.parent / "harbor-rye.raw.jsonl").read_text(encoding="utf-8"))
+    sample_ids = {event.event_id for event in sample}
+    board_ids = [event.event_id for events in raw.values() for event in events]
+    assert len(board_ids) == len(set(board_ids))
+    assert not (sample_ids & set(board_ids))
+    luis = {event.event_id for event in raw["LL-88421"]}
+    assert "evt_board_arrive_ll88421" in luis
+    assert "evt_board_delay_ll88421" in luis
 
 
 def _free_end_from_summary_events(events: list[Event], policy: DetentionPolicy):

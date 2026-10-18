@@ -239,10 +239,10 @@ LOADS: list[dict] = [
         },
     },
     {
-        # No arrival is visible at 3:50 PM. A delay_reported with no arrival
-        # would start the clock, so the ETA text is a driver_eta call_result.
-        # The arrived line is his 4:15 PM ETA, which dock-clock holds back
-        # until then. He is early for a 4:30 PM appointment.
+        # En route at the demo clock. The 3:30 PM text is a driver_eta note.
+        # There is no arrived line: a future arrival would be a fact that has
+        # not happened yet, and a delay_reported with no arrival would start
+        # the clock. Appointment 4:30 PM ET, ETA 4:15 PM ET.
         "load_id": "LL-88450",
         "driver": "Omar Haddad",
         "party_id": "pty_omar",
@@ -254,7 +254,7 @@ LOADS: list[dict] = [
         "reference": "PO-44150",
         "origin": "Fresno, CA",
         "appointment_at": "2026-10-17T20:30:00Z",  # 4:30 PM ET
-        "arrived_at": "2026-10-17T20:15:00Z",  # ETA 4:15 PM ET, early
+        "eta_at": "2026-10-17T20:15:00Z",  # 4:15 PM ET, not an arrival
         "eta": {
             "at": "2026-10-17T19:30:00Z",  # 3:30 PM ET, about 45 min out
             "channel": "sms",
@@ -297,11 +297,12 @@ def build_load(spec: dict) -> list[Event]:
     load_id = spec["load_id"]
     slug = load_id.replace("-", "").lower()
     events = [
-        _arrived(spec, slug),
         *_update(spec, slug),
         *_notices(spec, slug),
         *_unload(spec, slug),
     ]
+    if not spec.get("eta"):
+        events.insert(0, _arrived(spec, slug))
     rank = {
         "arrived": 0,
         "delay_reported": 1,
@@ -336,10 +337,8 @@ def _arrived(spec: dict, slug: str) -> Event:
     }
     if spec["door"]:
         payload["door"] = spec["door"]
-    if spec.get("eta"):
-        payload["eta_at"] = spec["arrived_at"]
     return _event(
-        f"evt_arrive_{slug}",
+        _fact_id("arrive", slug, spec["load_id"]),
         "arrived",
         spec["arrived_at"],
         spec["load_id"],
@@ -360,7 +359,7 @@ def _update(spec: dict, slug: str) -> list[Event]:
         payload["minutes_relayed"] = update["minutes_relayed"]
     return [
         _event(
-            f"evt_delay_{slug}",
+            _fact_id("delay", slug, spec["load_id"]),
             "delay_reported",
             update["at"],
             spec["load_id"],
@@ -388,7 +387,7 @@ def _eta(spec: dict, slug: str) -> Event:
             "to_role": "carrier",
             "summary": eta["detail"],
             "detail": eta["detail"],
-            "eta_at": spec["arrived_at"],
+            "eta_at": spec["eta_at"],
             "appointment_at": spec["appointment_at"],
             "facility": place["facility"],
             "destination": place["destination"],
@@ -502,6 +501,14 @@ def _body(spec: dict, notice: dict) -> str:
         f"{spec['driver']} (Red Kettle Freight) has been at {where} since {since}. "
         f"{clock_line}"
     )
+
+
+def _fact_id(kind: str, slug: str, load_id: str) -> str:
+    # LL-88421's arrival and delay already live in harbor-rye.raw.jsonl, with
+    # different payloads. The board copy needs its own ids.
+    if load_id == "LL-88421" and kind in ("arrive", "delay"):
+        return f"evt_board_{kind}_{slug}"
+    return f"evt_{kind}_{slug}"
 
 
 def _clock_start(spec: dict) -> str:
