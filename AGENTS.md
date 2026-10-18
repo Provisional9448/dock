@@ -1,5 +1,8 @@
 # Agents
 
+> Hackathon sprint in progress: read [HACKATHON.md](HACKATHON.md) first.
+
+
 You are working on Dock, a modular freight voice/SMS toolkit. The product in this repo is detention prevention. Docs are the contract. Code stays small and runnable.
 
 Read in this order: `docs/ARCHITECTURE.md`, `docs/VISION.md`, `docs/DEMO.md`, then the package you were asked to touch.
