@@ -16,7 +16,7 @@ import logging
 
 from dock_web.live import LiveDesk, LiveRun
 
-from dock_voice.record import build_driver_events, local_snapshot, post_later
+from dock_voice.record import log_receiver, build_driver_events, local_snapshot, post_later, queue_notices
 from dock_voice.script import (
     DRIVER_STATUS,
     answer_question,
@@ -24,8 +24,12 @@ from dock_voice.script import (
     parse_clock,
     parse_minutes,
     pick_role,
+    broker_brief,
+    consignee_brief,
     goodbye_line,
+    payer_role,
     pick_status,
+    shipper_brief,
     spoken,
 )
 
@@ -193,7 +197,8 @@ def build_agent(run: LiveRun):
             call.set_task(
                 "driver_report",
                 objective=(
-                    "Put the driver's wait on the record. He has already checked in at the receiving window and "
+                    "Capture and confirm the driver's update; nothing more. Do not mention free time, dollars, or rates to "
+                    "a driver: he is paid for waiting and does not pay detention. He has already checked in at the receiving window and "
                     "was told to wait; do not give directions. Fill every field you can from what he already said "
                     "and only ask for what is missing. If his first sentence gave the check-in time and what the "
                     "receiver told him, ask nothing and finish right away. Never ask who the clerk was. "
@@ -240,41 +245,57 @@ def build_agent(run: LiveRun):
             )
             return
         snap = desk.snapshot()
-        if role in ("shipper", "consignee"):
-            heads_up = snap["heads_up"]["shipper" if role == "shipper" else "consignee"]
-            if snap["summary"]["phase"] in ("running", "warning"):
-                rate = snap["policy"]
-                heads_up += (
-                    f" No charges yet; detention is ${str(rate['rate_usd_per_hour']).removesuffix('.00')} an hour after "
-                    f"{snap['summary']['free_time_ends_local']}, in {rate['increment_minutes']}-minute steps."
-                )
-            heads_up = spoken(heads_up)
-            call.set_variable("heads_up", heads_up)
+        if role == "shipper":
+            brief = shipper_brief(snap)
+            call.set_variable("heads_up", brief)
+            payer = payer_role(snap) == "shipper"
             call.set_task(
                 "heads_up",
                 objective=(
-                    "Deliver the detention heads-up that Dock would have placed as an outbound call, then ask "
-                    "what they will do and when."
+                    "Shipper call. Read the brief exactly. "
+                    + ("They pay detention on this load: ask what they will do (e.g. call the DC) and by when."
+                       if payer else "They do not pay detention on this load: status only, no money talk.")
                 ),
                 checklist=[
-                    guava.Say(heads_up),
+                    guava.Say(brief),
                     guava.Field(
                         key="plan",
                         field_type="text",
-                        question="What can you do to get the unload started, and by when?",
+                        question="What will you do, and by when?" if payer else "Anything you need from us on this load?",
+                        required=payer,
+                    ),
+                ],
+            )
+            return
+        if role == "consignee":
+            brief = consignee_brief(snap)
+            call.set_variable("heads_up", brief)
+            call.set_task(
+                "consignee",
+                objective=(
+                    "Receiver call. Read the brief exactly (it is what the driver reported). Then take their door "
+                    "and unload time, or the time unloading started. Keep it short."
+                ),
+                checklist=[
+                    guava.Say(brief),
+                    guava.Field(
+                        key="door_time",
+                        field_type="text",
+                        description="Door and the time unloading will start or did start, e.g. 'door 4 at 2:50 PM' or 'started at 4:48'.",
+                        question="What door, and what time will you start unloading? Or has it started?",
                     ),
                 ],
             )
             return
         call.set_task(
             "broker",
-            objective="Give the broker the clock and what the trail supports.",
+            objective="Broker call. Read the brief exactly: status for their customer, exposure, and that the carrier invoices off the record.",
             checklist=[
-                guava.Say(spoken(snap["heads_up"]["broker"] + " " + snap["summary"]["detail"])),
+                guava.Say(broker_brief(snap)),
                 guava.Field(
                     key="anything_else",
                     field_type="text",
-                    question="Do you want the proof pack sent to the broker desk?",
+                    question="Want the timestamped record sent to your desk?",
                     required=False,
                 ),
             ],
@@ -298,18 +319,26 @@ def build_agent(run: LiveRun):
                 said=said,
                 estimate_minutes=parse_minutes(said),
             )
-            post_later(run, events, "driver")
             snap = local_snapshot(run.context, [*base, *events], now)
             readback = driver_readback(snap, record.get("status", status), record)
+            if record.get("status", status) in ("arrived", "waiting"):
+                events = [*events, *queue_notices(run.context, snap, now, after=events[-1].event_id)]
+            post_later(run, events, "driver")
             log.info("driver read-back ready: %s", [e.type for e in events])
         except Exception:
             log.exception("driver path failed; speaking a fallback read-back")
         if not readback:
             readback = spoken(
-                "Thanks, Luis. I have your check-in and what the receiver told you. Free time is two hours from "
-                "your check-in, then detention is $75 an hour in 15-minute steps. Dock will warn the shipper and the broker."
+                "Got it, Luis. Your check-in and what they told you are on the load record. Anything else?"
             )
         wrap_up(call, readback)
+
+    @agent.on_task_complete("consignee")
+    def on_consignee(call: guava.Call) -> None:
+        answer = str(call.get_field("door_time") or "")
+        zone = run.context["load"].get("timezone", "America/New_York")
+        post_later(run, [], "consignee", write=lambda _e: log_receiver(run, answer, zone))
+        wrap_up(call, spoken("Thanks. Your door and unload time are on the load record. Anything else?"))
 
     @agent.on_task_complete("heads_up")
     def on_heads_up(call: guava.Call) -> None:
@@ -326,7 +355,7 @@ def build_agent(run: LiveRun):
                 call_id=str(call.id), to_role=to_role, body=body, reply=plan, summary=snap["summary"]
             ),
         )
-        wrap_up(call, "Thanks. The heads-up and your answer are on the load record with a timestamp.")
+        wrap_up(call, "Thanks. That's on the load record with a timestamp. Anything else?")
 
     @agent.on_session_end
     def on_session_end(call: guava.Call, ended) -> None:
@@ -335,6 +364,6 @@ def build_agent(run: LiveRun):
 
     @agent.on_task_complete("broker")
     def on_broker(call: guava.Call) -> None:
-        call.hangup("Say the proof pack is on the broker desk, it is not an invoice, and goodbye.")
+        close_call(call, "broker")
 
     return agent

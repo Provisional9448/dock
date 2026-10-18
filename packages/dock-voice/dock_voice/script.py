@@ -192,28 +192,135 @@ def parse_clock(answer: object, now: datetime, zone: str, *, ahead_minutes: int 
 
 
 def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
-    """Exactly what the line says back to the driver after logging. Literal text, spoken verbatim, kept short
-    (take 3's read-back ran ~30 seconds). Ends with 'Anything else?'."""
+    """Exactly what the line says back to the driver. Drivers are paid for waiting and don't pay detention, so the
+    driver call only captures and confirms his update: no free time, countdown, dollars, or rate here (those are
+    for shipper, consignee and broker calls). One or two short sentences, then 'Anything else?'."""
     r = record or {}
     at = r.get("at_local") or snap["clock_local"]
-    said_by = r.get("said_by") or "The receiver"
-    if r.get("estimate_minutes") and r.get("eta_local"):
-        promise = f" {said_by} said about {r['estimate_minutes']} minutes, so around {r['eta_local']}."
-    elif r.get("said"):
-        promise = f" {said_by} said: {r['said']}."
+    said_by = r.get("said_by") or "they"
+    said = (r.get("said") or "").strip().rstrip(".")
+    if said:
+        told = f"; {said_by} said {said}"
+    elif r.get("estimate_minutes"):
+        told = f"; {said_by} said about {r['estimate_minutes']} minutes"
     else:
-        promise = ""
+        told = ""
     if status == "arrived":
         text = (
-            f"Logged: checked in at {at}.{promise} {money_line(snap)} "
-            "Dock will warn the shipper and the broker before then. Anything else?"
+            f"Got it, Luis. Checked in at the receiving window at {at}{told}. It's on the load record. "
+            "Call back when they start unloading or give you a new time. Anything else?"
         )
     elif status == "waiting":
-        text = f"Logged at {at}: still waiting.{promise} {money_line(snap)} Anything else?"
+        text = (
+            f"Got it, Luis. Still waiting as of {at}{told}. It's on the load record. "
+            "Call back when they start unloading. Anything else?"
+        )
     elif status == "unload_started":
-        text = f"Logged: unloading started at {at}. {money_line(snap)} Anything else?"
+        text = f"Got it, Luis. Unloading started at {at}. It's on the load record. Anything else?"
     else:
-        text = f"Logged: unload finished at {at}. Anything else?"
+        text = f"Got it, Luis. Unload finished at {at}. It's on the load record. Anything else?"
+    return spoken(text)
+
+
+def _driver_report(snap: dict) -> dict:
+    """What the driver put on the record: check-in time and the latest thing the receiver told him."""
+    zone = snap["load"].get("timezone", "America/New_York")
+    events = [row["event"] for row in snap.get("events", [])]
+    arrived = next((e for e in events if e["type"] == "arrived"), None)
+    delays = [e for e in events if e["type"] == "delay_reported"]
+    from dock_events.timeutil import format_local
+
+    out = {"checked_in": format_local(arrived["occurred_at"], zone) if arrived else None, "said": "", "eta": None}
+    if delays:
+        detail = delays[-1]["payload"].get("detail", "")
+        said = re.search(r"said: ([^.]*)", detail)
+        out["said"] = said.group(1).strip() if said else ""
+        eta = re.search(r"around (\d{1,2}:\d\d [AP]M \w+)", detail)
+        out["eta"] = eta.group(1) if eta else None
+    return out
+
+
+def _rate(snap: dict) -> str:
+    rate = snap["policy"]
+    return f"${str(rate['rate_usd_per_hour']).removesuffix('.00')} an hour in {rate['increment_minutes']}-minute steps"
+
+
+def payer_role(snap: dict) -> str:
+    """Who pays detention on this load (per-load terms; carrier invoices them). Shipper or consignee."""
+    role = str(snap.get("load", {}).get("payer_role", "shipper")).lower()
+    return role if role in ("shipper", "consignee") else "shipper"
+
+
+def _carrier(snap: dict) -> str:
+    return "Red Kettle"
+
+
+def _money(snap: dict) -> str:
+    """Free-time cutoff and what a charge would be: only for the payer (and the broker)."""
+    s = snap["summary"]
+    if s["phase"] in ("running", "warning"):
+        return (
+            f"Free time ends at {s['free_time_ends_local']}, {span_words(s['remaining_free_minutes'])} from now. "
+            f"No charge yet; after that {_carrier(snap)} can bill detention at {_rate(snap)}."
+        )
+    if s["phase"] == "accruing":
+        return (
+            f"Free time ended at {s['free_time_ends_local']}. Detention so far is about ${s['estimated_charge_usd']}, "
+            f"{_rate(snap)}, until unloading starts."
+        )
+    if s["phase"] == "closed":
+        return f"The clock stopped at about ${s['estimated_charge_usd']} of detention."
+    return ""
+
+
+def _status(snap: dict) -> str:
+    s, d = snap["summary"], _driver_report(snap)
+    if not d["checked_in"]:
+        return "The driver hasn't checked in yet."
+    if s["phase"] == "closed":
+        return f"The driver checked in at {d['checked_in']}, and unloading has started."
+    eta = f" The receiver estimated around {d['eta']}." if d["eta"] else ""
+    return f"The driver checked in at {d['checked_in']} and is waiting for a door.{eta}"
+
+
+def shipper_brief(snap: dict) -> str:
+    """Shipper: on time? If the shipper pays on this load: will it cost me and what to do (call the DC).
+    Otherwise status only."""
+    s = snap["summary"]
+    text = _status(snap)
+    if payer_role(snap) == "shipper" and s["phase"] != "not_started":
+        text += " " + _money(snap)
+        if s["phase"] in ("running", "warning"):
+            text += f" To avoid it, get the DC to start unloading before {s['free_time_ends_local']}."
+        elif s["phase"] == "accruing":
+            text += " Calling the DC now is what stops it."
+    return spoken(text)
+
+
+def consignee_brief(snap: dict) -> str:
+    """Consignee / receiver: confirm what the driver reported, then we take their door or unload time.
+    Money only if the consignee is the payer on this load."""
+    s, d = snap["summary"], _driver_report(snap)
+    if not d["checked_in"]:
+        return spoken("The driver for L L 8 8 4 2 1 hasn't checked in with Dock yet.")
+    told = f" He says your team told him: {d['said']}." if d["said"] else ""
+    text = f"Red Kettle's driver, Luis, reports he checked in at your receiving window at {d['checked_in']}.{told}"
+    if payer_role(snap) == "consignee" and s["phase"] != "not_started":
+        text += " " + _money(snap)
+    return spoken(text)
+
+
+def broker_brief(snap: dict) -> str:
+    """Broker: status for their customer, exposure, and that the carrier invoices off the timestamped record."""
+    s = snap["summary"]
+    payer = payer_role(snap)
+    text = "Status for your customer: " + _status(snap)
+    if s["phase"] != "not_started":
+        text += " " + _money(snap)
+    text += (
+        f" On this load the {payer} pays and {_carrier(snap)} invoices; every step is timestamped on the load "
+        "record to back the carrier's invoice."
+    )
     return spoken(text)
 
 

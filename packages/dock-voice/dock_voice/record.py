@@ -137,6 +137,87 @@ def local_snapshot(context: dict, facts: list[Event], now: datetime) -> dict:
     return snap
 
 
+def queue_notices(context: dict, snap: dict, now: datetime, *, after: str = "") -> list[Event]:
+    """Right after a driver update: the heads-up call script for the PAYER (shipper or consignee per the load's
+    terms) and, when a broker is on the load, a message to the broker. Outbound calling and SMS are disabled in
+    the demo, so these are logged as call_result with outcome dry_run, full text in the summary, visible on the
+    desk at once. Nothing is dialed or sent."""
+    from dock_voice.script import broker_brief, payer_role, shipper_brief, consignee_brief
+
+    load = context["load"]
+    payer = payer_role({"load": load})
+    stamp = format_time(now)
+    actor = Actor(role="system", party_id="dock-voice", channel="voice")
+    parties = {p["role"]: p for p in context["parties"]}
+    tag = uuid.uuid4().hex[:10]
+    out = []
+    script = shipper_brief(snap) if payer == "shipper" else consignee_brief(snap)
+    who = parties.get(payer)
+    if who:
+        out.append(Event(
+            event_id=f"ntq-payer-{tag}", type="call_result", occurred_at=stamp, recorded_at=stamp,
+            load_id=load["load_id"], actor=actor, caused_by=after or None, source="dock-voice",
+            payload={
+                "goal": f"{payer}_heads_up_queued",
+                "outcome": "dry_run",
+                "to_party_id": who["party_id"],
+                "to_name": who["contact"],
+                "to_role": payer,
+                "summary": f"Heads-up call to {payer} (outbound disabled in demo): {script}",
+            },
+        ))
+    broker = parties.get("broker")
+    if broker:
+        msg = broker_brief(snap)
+        out.append(Event(
+            event_id=f"ntq-broker-{tag}", type="call_result", occurred_at=stamp, recorded_at=stamp,
+            load_id=load["load_id"], actor=Actor(role="system", party_id="dock-voice", channel="sms"),
+            caused_by=after or None, source="dock-voice",
+            payload={
+                "goal": "broker_message_queued",
+                "outcome": "dry_run",
+                "to_party_id": broker["party_id"],
+                "to_name": broker["contact"],
+                "to_role": "broker",
+                "summary": f"Message to broker (SMS disabled in demo): {msg}",
+            },
+        ))
+    return out
+
+
+def log_receiver(run, answer: str, zone: str) -> list[Event]:
+    """Consignee's door / unload time. 'started at 4:48' -> unload_started (if a check-in is on record);
+    anything else -> call_result with their words, timestamped."""
+    from dock_voice.script import parse_clock
+
+    load = run.context["load"]
+    now = run.now()
+    stamp = format_time(now)
+    party = next(p for p in run.context["parties"] if p["role"] == "consignee")
+    low = answer.lower()
+    started = any(w in low for w in ("started", "unloading now", "are unloading", "began"))
+    has_arrival = any(e.type == "arrived" for e in run.read())
+    if started and has_arrival:
+        at = parse_clock(answer, now, zone)
+        at = at if at is not None and at <= now else now
+        event = Event(
+            event_id=f"evt-unload_s-{uuid.uuid4().hex[:12]}", type="unload_started", occurred_at=format_time(at),
+            recorded_at=stamp, load_id=load["load_id"],
+            actor=Actor(role="consignee", party_id=party["party_id"], channel="voice"),
+            payload={"door": load.get("door", "door 4")}, source="dock-voice",
+        )
+    else:
+        event = Event(
+            event_id=f"call-cnee-{uuid.uuid4().hex[:12]}", type="call_result", occurred_at=stamp, recorded_at=stamp,
+            load_id=load["load_id"], actor=Actor(role="system", party_id="dock-voice", channel="voice"),
+            payload={"goal": "consignee_update", "outcome": "reached", "to_party_id": party["party_id"],
+                     "to_name": party["contact"], "to_role": "consignee",
+                     "summary": (f"Receiver: {answer.strip()}" if answer.strip() else "Receiver called.")[:400]},
+            source="dock-voice",
+        )
+    return run.append([event])
+
+
 def mirror(run, events: list[Event], label: str = "driver") -> bool:
     """Best effort copy to a second desk (DOCK_MIRROR_URL, e.g. the public Railway desk) with the same demo
     clock. The local log stays the source of truth; a failure here is logged and ignored."""

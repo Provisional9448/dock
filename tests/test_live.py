@@ -123,8 +123,8 @@ def test_agent_handlers_with_mockcall(run):
     driver.set_field("said_by", "Dana at the receiving window")
     driver.set_field("said", "no doors open, wait in your truck, we'll call you, maybe 40 minutes")
     agent._on_task_complete_handlers["driver_report"](driver)
-    events = _wait_for(run, 2)
-    assert [e.type for e in events] == ["arrived", "delay_reported"]
+    events = _wait_for(run, 4)
+    assert [e.type for e in events][:2] == ["arrived", "delay_reported"]
     assert events[0].occurred_at == "2026-10-17T18:06:00Z"
     assert "Dana at the receiving window said" in events[1].payload["detail"]
     # read back, then "Anything else?" and wait: no hangup yet
@@ -133,9 +133,8 @@ def test_agent_handlers_with_mockcall(run):
     readback = driver_readback(LiveDesk(run).snapshot(), "arrived", {
         "at_local": "2:06 PM ET", "said_by": "Dana at the receiving window", "said": "x",
         "estimate_minutes": 40, "eta_local": "2:46 PM ET"})
-    assert "2:06 PM Eastern" in readback and "4:06 PM Eastern" in readback and "2:46 PM Eastern" in readback
-    assert " ET" not in readback and "1 hour 58 minutes from now" in readback
-    assert "No charges yet; after that it's $75 an hour, charged in 15-minute steps" in readback
+    assert readback.startswith("Got it, Luis. Checked in at the receiving window at 2:06 PM Eastern; Dana")
+    assert " ET" not in readback and "$" not in readback and "free time" not in readback.lower()
     agent._on_task_complete_handlers["wrapup"](driver)
     assert "hang up" in driver._command_queue[-1].instruction
 
@@ -146,7 +145,7 @@ def test_agent_handlers_with_mockcall(run):
     agent._on_task_complete_handlers["who"](shipper)
     shipper.set_field("plan", "I'll call the DC, let me know when it's unloading")
     agent._on_task_complete_handlers["heads_up"](shipper)
-    kinds = [e.type for e in _wait_for(run, 4)]
+    kinds = [e.type for e in _wait_for(run, 6)]
     assert kinds[-2:] == ["notice_sent", "call_result"]
     assert run.read()[-2].payload["channel"] == "voice"
 
@@ -166,8 +165,7 @@ def test_driver_call_flow_check_in_update_unload(run):
     snap = LiveDesk(run).snapshot()
     assert snap["summary"]["free_time_ends_local"].startswith("4:06")
     reply = driver_readback(snap, rec["status"], rec)
-    assert "4:06 PM Eastern" in reply and "1 hour 58 minutes from now" in reply and "Dana at receiving" in reply
-    assert "$75 an hour" in reply and "$0.00" not in reply
+    assert "2:06 PM Eastern" in reply and "Dana at receiving said" in reply and "$" not in reply
 
     run.set_now(parse_time("2026-10-17T19:30:00Z"))
     events, rec = log_driver(run, "waiting", said_by="Dana", said="another 20", estimate_minutes=parse_minutes("another 20"))
@@ -254,15 +252,15 @@ def test_driver_readback_survives_desk_403(tmp_path, monkeypatch):
     agent._on_task_complete_handlers["driver_report"](call)
     assert time.monotonic() - started < 3
     said = " ".join(str(getattr(c, "script", "")) + str(getattr(c, "instruction", "")) + str(getattr(c, "task", "")) + repr(c) for c in call._command_queue)
-    assert "2:06 PM Eastern" in said and "1 hour 58 minutes from now" in said and "$75 an hour" in said
+    assert "Got it, Luis. Checked in at the receiving window at 2:06 PM Eastern" in said and "$75" not in said
     assert "Anything else?" in said
     for _ in range(100):
         spool = tmp_path / "spool.jsonl"
-        if spool.exists() and len(spool.read_text().splitlines()) >= 2:
+        if spool.exists() and len(spool.read_text().splitlines()) >= 4:
             break
         time.sleep(0.05)
     spooled = [json.loads(line)["type"] for line in (tmp_path / "spool.jsonl").read_text().splitlines()]
-    assert spooled == ["arrived", "delay_reported"]
+    assert spooled == ["arrived", "delay_reported", "call_result", "call_result"]
 
 
 def test_caller_name_near_matches():
@@ -311,8 +309,10 @@ def test_spoken_polish_name_zero_and_steps(run):
     assert goodbye_line("shipper").count("Goodbye") == 1 and "Luis" not in goodbye_line("shipper")
     run.set_now(parse_time("2026-10-17T18:08:00Z"))
     log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
-    text = driver_readback(LiveDesk(run).snapshot(), "arrived", {"at_local": "2:06 PM ET"})
-    assert "charged in 15-minute steps" in text and "billed" not in text and "02:" not in text
+    from dock_voice.script import shipper_brief
+
+    text = shipper_brief(LiveDesk(run).snapshot())
+    assert "15-minute steps" in text and "billed" not in text and "02:" not in text
 
 
 def test_wrapup_says_goodbye_once_with_luis(run):
@@ -344,8 +344,8 @@ def test_take3_read_back_is_short_and_clerk_is_never_asked(run):
     rec = {"at_local": "2:06 PM ET", "said_by": "Dana", "said": "wait in the truck, maybe 40 minutes",
            "estimate_minutes": 40, "eta_local": "2:46 PM ET"}
     text = driver_readback(LiveDesk(run).snapshot(), "arrived", rec)
-    assert text.startswith("Logged: checked in at 2:06 PM Eastern.") and text.endswith("Anything else?")
-    assert len(text.split()) <= 60, len(text.split())
+    assert text.startswith("Got it, Luis. Checked in at the receiving window at 2:06 PM Eastern") and text.endswith("Anything else?")
+    assert len(text.split()) <= 45, len(text.split())
     assert "02:" not in text and "Louise" not in text
     try:
         agent = build_agent(run)
@@ -379,3 +379,80 @@ def test_mirror_to_second_desk_is_best_effort(run, tmp_path, monkeypatch):
         assert mirror(run, events) is False  # logged, never raised
     finally:
         server.shutdown()
+
+
+def _checked_in(run):
+    run.set_now(parse_time("2026-10-17T18:08:00Z"))
+    log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"), said_by="Dana",
+               said="wait in the truck, about 40 minutes", estimate_minutes=40)
+    return LiveDesk(run).snapshot()
+
+
+def test_role_driver_no_money(run):
+    snap = _checked_in(run)
+    text = driver_readback(snap, "arrived", {"at_local": "2:06 PM ET", "said_by": "Dana",
+                                             "said": "wait in the truck, about 40 minutes"})
+    assert text == ("Got it, Luis. Checked in at the receiving window at 2:06 PM Eastern; Dana said wait in the "
+                    "truck, about 40 minutes. It's on the load record. Call back when they start unloading or give "
+                    "you a new time. Anything else?")
+
+
+def test_role_shipper_payer_gets_cutoff_cost_and_action(run):
+    from dock_voice.script import payer_role, shipper_brief
+
+    snap = _checked_in(run)
+    assert payer_role(snap) == "shipper"  # fictional per-load terms in parties.json
+    text = shipper_brief(snap)
+    assert "checked in at 2:06 PM Eastern" in text and "Free time ends at 4:06 PM Eastern" in text
+    assert "$75 an hour" in text and "get the DC to start unloading before 4:06 PM Eastern" in text
+    assert "Dock will bill" not in text
+
+
+def test_role_consignee_status_only_when_not_payer(run):
+    from dock_voice.script import consignee_brief
+
+    snap = _checked_in(run)
+    text = consignee_brief(snap)
+    assert "reports he checked in at your receiving window at 2:06 PM Eastern" in text
+    assert "wait in the truck, about 40 minutes" in text and "$" not in text
+    snap["load"]["payer_role"] = "consignee"
+    assert "$75 an hour" in consignee_brief(snap)
+    from dock_voice.script import shipper_brief
+    assert "$" not in shipper_brief(snap)
+
+
+def test_role_broker_status_exposure_and_carrier_invoices(run):
+    from dock_voice.script import broker_brief
+
+    text = broker_brief(_checked_in(run))
+    assert text.startswith("Status for your customer:") and "around 2:46 PM Eastern" in text
+    assert "the shipper pays and Red Kettle invoices" in text and "back the carrier's invoice" in text
+    assert "Dock will bill" not in text
+
+
+def test_consignee_unload_time_logged(run):
+    from dock_voice.record import log_receiver
+
+    _checked_in(run)
+    run.set_now(parse_time("2026-10-17T20:55:00Z"))
+    (event,) = log_receiver(run, "door 4, we started unloading at 4:48", "America/New_York")
+    assert event.type == "unload_started" and event.occurred_at == "2026-10-17T20:48:00Z"
+    assert event.actor.role == "consignee"
+
+
+def test_driver_update_queues_payer_call_and_broker_message(run):
+    from dock_voice.record import build_driver_events, local_snapshot, queue_notices
+
+    run.set_now(parse_time("2026-10-17T18:08:00Z"))
+    events, _rec, base, now = build_driver_events(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
+    snap = local_snapshot(run.context, [*base, *events], now)
+    notes = queue_notices(run.context, snap, now, after=events[-1].event_id)
+    run.append([*events, *notes])
+    payer, broker = notes
+    assert payer.payload["to_role"] == "shipper" and payer.payload["outcome"] == "dry_run"
+    assert payer.payload["summary"].startswith("Heads-up call to shipper (outbound disabled in demo): ")
+    assert "Free time ends at 4:06 PM Eastern" in payer.payload["summary"]
+    assert broker.payload["to_role"] == "broker" and broker.actor.channel == "sms"
+    assert broker.payload["summary"].startswith("Message to broker") and "carrier's invoice" in broker.payload["summary"]
+    rows = [row["event"] for row in LiveDesk(run).snapshot()["events"]]
+    assert sum(1 for r in rows if r["type"] == "call_result") == 2

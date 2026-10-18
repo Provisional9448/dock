@@ -17,6 +17,8 @@
     "consignee_party_id": "pty_harbor_rye",
     "carrier_party_id": "pty_red_kettle",
     "broker_party_id": "pty_lantern",
+    "payer_role": "shipper",
+    "payer_note": "Fictional terms for this demo load: the shipper pays detention (shipper-pays, FOB-destination style). Red Kettle Freight, the carrier, invoices; Dock keeps the timestamped record.",
     "driver_party_id": "pty_luis"
   },
   "parties": [
