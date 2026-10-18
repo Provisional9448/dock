@@ -12,6 +12,10 @@ These are recurring shapes from freight operations, abstracted. The sample data 
 - Missing paperwork (BOL, POD, customs) delays a crossing or a bill even when the truck moved fine.
 - Accessorial charges that show up for the first time on an invoice get disputed. The argument is almost never about the arithmetic. It is about whether anyone was told while there was still time to act.
 
+## October 17 inbound-only sprint
+
+The immediate demo scope is incoming shipment-status calls plus confirmed on-site delay reports for one fictional load, in English. It reuses detention calculations and the shared event log. Outbound calling, SMS, transfers and multilingual support are outside tonight's build. [INBOUND_DEMO.md](INBOUND_DEMO.md) describes the implemented surface.
+
 ## Why detention prevention is the first product
 
 A driver at a closed door is a fact with a clock on it. The people who can open the door (shipper, consignee, warehouse) are not the person sitting in the truck. If they hear about it during free time, with a plain estimate and a plain instruction, some of those charges never start. If they hear about it only on the invoice, the charge is already a fight.

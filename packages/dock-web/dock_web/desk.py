@@ -8,6 +8,7 @@ from pathlib import Path
 from dock_clock.policy import DetentionPolicy, policy_from_context
 from dock_clock.tick import replay_clock
 from dock_events.context import load_context
+from dock_events.log import EventLog
 from dock_events.model import Event, load_jsonl
 from dock_events.timeutil import format_local, format_local_long, format_time, parse_time
 from dock_intake.normalize import normalize_message
@@ -23,6 +24,7 @@ class Desk:
     def __init__(self, context: dict, facts: list[Event]):
         self.context = context
         self.policy: DetentionPolicy = policy_from_context(context)
+        self.runtime_log: Path | None = None
         self._base = list(facts)
         self._extra: list[Event] = []
         self.as_of = parse_time(PRESETS[0]["as_of"])
@@ -37,13 +39,30 @@ class Desk:
         facts = load_jsonl(raw_path.read_text(encoding="utf-8"))
         return cls(context, facts)
 
+    @classmethod
+    def from_runtime(cls, root: Path, log_path: Path, as_of: str) -> Desk:
+        context = load_context(root / "data" / "samples" / "parties.json")
+        if not log_path.is_file():
+            raise ValueError("runtime log does not exist; initialize with dock-inbound status first")
+        desk = cls(context, [])
+        desk.runtime_log = log_path
+        desk.as_of = parse_time(as_of)
+        desk.note = "Confirmed inbound reports. Refresh to read the latest saved facts."
+        return desk
+
+    def _require_sample(self) -> None:
+        if self.runtime_log is not None:
+            raise ValueError("inbound evidence view is read-only; report changes through the inbound agent")
+
     def reset(self) -> None:
+        self._require_sample()
         with self._lock:
             self._extra.clear()
             self.as_of = parse_time(PRESETS[0]["as_of"])
             self.note = "Reset to the sample. Driver messages you added are gone."
 
     def jump(self, as_of: str) -> None:
+        self._require_sample()
         with self._lock:
             self.as_of = parse_time(as_of)
             self.note = f"Demo clock moved to {format_local_long(as_of, self._zone())}."
@@ -55,6 +74,7 @@ class Desk:
         self.jump(match["as_of"])
 
     def report_driver(self, text: str) -> None:
+        self._require_sample()
         load = self.context["load"]
         occurred = format_time(self.as_of)
         events = normalize_message(
@@ -74,17 +94,16 @@ class Desk:
 
     def snapshot(self) -> dict:
         with self._lock:
-            facts = [
-                event
-                for event in [*self._base, *self._extra]
-                if parse_time(event.occurred_at) <= self.as_of
-            ]
+            raw = EventLog(self.runtime_log).read() if self.runtime_log is not None else [*self._base, *self._extra]
+            raw = [event for event in raw if event.load_id == self.context["load"]["load_id"]]
             as_of = self.as_of
+            if self.runtime_log is not None and raw:
+                as_of = max(as_of, *(parse_time(event.occurred_at) for event in raw))
+            facts = [event for event in raw if parse_time(event.occurred_at) <= as_of]
             note = self.note
-        projected = apply_notices(
-            replay_clock(facts, as_of=as_of, policy=self.policy),
-            provider=LogProvider(),
-        )
+        projected = replay_clock(facts, as_of=as_of, policy=self.policy)
+        if self.runtime_log is None:
+            projected = apply_notices(projected, provider=LogProvider())
         ordered = sorted(projected, key=sort_key)
         load = self.context["load"]
         zone = load["timezone"]
@@ -92,13 +111,15 @@ class Desk:
         markdown = render_markdown(ordered, load["load_id"])
         active = next((item["id"] for item in PRESETS if parse_time(item["as_of"]) == as_of), None)
         return {
-            "banner": "Fictional Saturday desk. No call or SMS leaves this machine.",
+            "runtime_mode": self.runtime_log is not None,
+            "banner": ("Fictional inbound demo. Saved reports only; no outbound calls or SMS."
+                       if self.runtime_log is not None else "Fictional Saturday desk. No call or SMS leaves this machine."),
             "note": note,
             "demo_as_of": format_time(as_of),
             "demo_as_of_local": format_local_long(format_time(as_of), zone),
             "active_preset": active,
-            "presets": list(PRESETS),
-            "driver_prompts": list(DRIVER_PROMPTS),
+            "presets": [] if self.runtime_log is not None else list(PRESETS),
+            "driver_prompts": [] if self.runtime_log is not None else list(DRIVER_PROMPTS),
             "load": load,
             "parties": self.context["parties"],
             "policy": {

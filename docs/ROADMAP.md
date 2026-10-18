@@ -2,7 +2,11 @@
 
 This file is the only place the later modules exist. Do not scaffold them until someone is actually building that one. The detention path is the thing that has to stay true while those ideas wait.
 
-## Now
+## Current sprint override: inbound only
+
+Brian scoped the October 17 build to inbound shipment-status and on-site delay calls, with an 8 PM Pacific deadline. Status is implemented inside dock-intake for this single-load slice; no empty dock-status package is added. See [INBOUND_DEMO.md](INBOUND_DEMO.md). The outbound/SMS priorities below are later backlog, not tonight's build order.
+
+## Starter and later backlog
 
 Detention prevention, as shipped in this starter:
 

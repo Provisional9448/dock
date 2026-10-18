@@ -208,7 +208,9 @@ dock-intake --context data/samples/parties.json
 
 Stdin is one JSON object per line: `channel` (`voice` or `sms`), `text`, `load_id`, `party_id`, `role`, `occurred_at`.
 
-`dock_intake/guava_inbound.py` shows the `listen_phone` expert. Importing the package does not import `guava`. `serve()` raises unless `DOCK_CALL_MODE=live`.
+`dock_intake/guava_inbound.py` implements the inbound-only status and structured-report agent. Importing the module does not import `guava`. `serve()` raises unless `DOCK_INBOUND_MODE=live`; phone additionally requires an inbound `GUAVA_AGENT_NUMBER`. `dock-inbound status` is offline. See [INBOUND_DEMO.md](INBOUND_DEMO.md).
+
+`InboundSession` reads one load from an append-only runtime JSONL log. It seeds arrival/delay facts only, never prerecorded call/unload outcomes. Status is read-only; explicitly confirmed reports append existing `delay_reported`, `unload_started` or `unload_done` events with stable action IDs. Optional payload fields `detail`, `expected_start` and `confirmed` preserve the reported context. Expected start never creates an unload event. The pinned demo clock and source timestamps are explicit. Runtime paths inside sample fixtures are rejected. EventLog reads use a shared file lock and appends retain their exclusive lock.
 
 ### dock-clock
 
@@ -295,3 +297,7 @@ A live adapter is a new class with the same `send` method. Callers (`apply_notic
 ## What is deliberately absent
 
 No database, no queue, no auth, no background scheduler. The log is the queue if you append to it. A later process can `tail` the file and pipe it. If you add storage, keep the JSONL line as the interchange format so the pipes still work.
+
+## Inbound runtime evidence view
+
+`dock-web --runtime-log PATH --as-of UTC_TIMESTAMP` reads saved operational events instead of curated future sample events. It derives clock/proof without composing synthetic notices, refuses all sample mutations, and exposes manual refresh. No browser voice widget or hosted deployment is added. The original sample mode remains separate.

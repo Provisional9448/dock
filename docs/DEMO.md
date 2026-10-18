@@ -1,4 +1,6 @@
-# Saturday demo
+# Saturday sample demo
+
+For the inbound-only agent and saved reports, use [INBOUND_DEMO.md](INBOUND_DEMO.md). This document describes the original curated fixture demo.
 
 You can run this with one laptop and no carrier on the phone. The date on the desk is Saturday, October 17, 2026, pinned to the sample. You move that clock with buttons. You do not wait out two hours of free time.
 

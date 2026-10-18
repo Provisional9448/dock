@@ -121,11 +121,15 @@ name = "dock-intake"
 version = "0.1.0"
 source = { editable = "packages/dock-intake" }
 dependencies = [
+    { name = "dock-clock" },
     { name = "dock-events" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "dock-events", editable = "packages/dock-events" }]
+requires-dist = [
+    { name = "dock-clock", editable = "packages/dock-clock" },
+    { name = "dock-events", editable = "packages/dock-events" },
+]
 
 [[package]]
 name = "dock-notify"

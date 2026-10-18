@@ -266,7 +266,7 @@
         el("h1", {}, [summary.headline]),
         el("p", { class: "detail" }, [summary.detail]),
         el("p", { class: "avoid" }, [summary.how_to_avoid]),
-        el("h2", {}, ["Move the demo clock"]),
+        el("h2", {}, [desk.runtime_mode ? "Inbound evidence" : "Move the demo clock"]),
         presets,
         el("p", { class: "note" + (desk.note && desk.note.startsWith("could not") ? " error" : "") }, [desk.note || ""]),
       );
@@ -299,6 +299,11 @@
     }
 
     function carrierPanel(desk) {
+      if (desk.runtime_mode) return el("div", {}, [
+        el("h2", {}, ["Inbound shipment reports"]),
+        el("p", {}, ["Call Dock to ask for status or confirm an on-site delay. This view reads saved reports; it does not send messages or place calls."]),
+        el("button", { type: "button", onclick: () => refresh() }, ["Refresh saved reports"]),
+      ]);
       const box = el("textarea", { id: "driver-text", "aria-label": "What the driver reports" });
       box.placeholder = "Text as Luis, the driver.";
       const prompts = el("div", { class: "prompts" });

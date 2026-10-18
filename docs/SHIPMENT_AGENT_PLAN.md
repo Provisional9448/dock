@@ -2,7 +2,7 @@
 
 Updated: October 17, 2026, 5:40 PM Pacific.
 Deadline: 8:00 PM Pacific today — approximately 2 hours 20 minutes.
-Status: Revised plan; implementation has not started. This replaces the broader plan in e527a5a.
+Status: Inbound-only offline candidate implemented and independently reviewed. 40 tests and a runtime HTTP smoke check pass. Guava authentication, account entitlement and two inbound audio rehearsals remain unverified. This replaces the broader plan in e527a5a.
 
 ## Tonight's outcome
 

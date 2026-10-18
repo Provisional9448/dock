@@ -4,13 +4,15 @@ version = "0.1.0"
 description = "Normalize driver voice and SMS into Dock events."
 license = "MIT"
 requires-python = ">=3.11"
-dependencies = ["dock-events"]
+dependencies = ["dock-events", "dock-clock"]
 
 [project.scripts]
 dock-intake = "dock_intake.cli:main"
+dock-inbound = "dock_intake.inbound_cli:main"
 
 [tool.uv.sources]
 dock-events = { workspace = true }
+dock-clock = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

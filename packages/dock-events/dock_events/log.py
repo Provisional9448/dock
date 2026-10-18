@@ -22,7 +22,9 @@ class EventLog:
     def read(self) -> list[Event]:
         if not self.path.exists():
             return []
-        return load_jsonl(self.path.read_text(encoding="utf-8"))
+        with self.path.open("r", encoding="utf-8") as handle:
+            fcntl.flock(handle, fcntl.LOCK_SH)
+            return load_jsonl(handle.read())
 
     def append(self, events: list[Event]) -> AppendResult:
         self.path.parent.mkdir(parents=True, exist_ok=True)

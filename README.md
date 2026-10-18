@@ -14,6 +14,10 @@ Dock starts with the expensive quiet one. A driver reports, by voice or SMS, tha
 
 The shape is Unix. Each module does one job, speaks JSONL, and can be piped. A bigger freight agent can reuse a module without taking the rest.
 
+## Inbound-only hackathon sprint
+
+The current sprint handles incoming shipment-status calls and confirmed on-site delay reports for one fictional load. See [docs/INBOUND_DEMO.md](docs/INBOUND_DEMO.md) for offline status, inbound listening and a read-only evidence view. No outbound calls, SMS or transfers are part of this sprint.
+
 ## 60-second demo
 
 No carrier, no Guava account, no SMS provider.
@@ -68,11 +72,11 @@ Copy `.env.example` to `.env` only when you are ready to try a live Guava call. 
 | --- | --- | --- |
 | `dock-events` | Schema and append-only JSONL log | Runs |
 | `dock-clock` | Free-time clock, emits `charge_risk` | Runs |
-| `dock-intake` | Driver text to events | Rules run. Guava `listen_phone` is gated behind `DOCK_CALL_MODE=live` |
+| `dock-intake` | Driver text to events | Original text rules plus persistent structured inbound reports. `dock-inbound` listens only with `DOCK_INBOUND_MODE=live` |
 | `dock-notify` | Heads-up with the estimate and how to avoid it | Composes events. Providers do not send |
 | `dock-call` | Scripted outbound goal, rules in code | `plan` and `simulate` run. `call_phone` is gated |
 | `dock-proof` | Timeline to a detention trail | Runs |
-| `dock-web` | Shipper, carrier, and broker over the same events | Runs in memory |
+| `dock-web` | Shipper, carrier, and broker over the same events | Original sample in memory; optional read-only runtime log view |
 
 There is no `dock-status`, `dock-docs`, fleet-compliance, or crash-intake code. Those are described in [docs/ROADMAP.md](docs/ROADMAP.md) only.
 
@@ -109,7 +113,7 @@ Docs:
 - Full index: <https://docs.goguava.ai/llms.txt>
 - Coding-agent starter: <https://goguava.ai/docs/coding-agent-starter.md>
 
-Authenticate with `guava login`, or export `GUAVA_API_KEY` (and `GUAVA_AGENT_NUMBER` when you dial). Do not commit either value. The Saturday demo and `uv run pytest` do not need a key. This repo still does not import Guava unless you pass the live gate.
+Authenticate with `guava login`, or export `GUAVA_API_KEY` (and `GUAVA_AGENT_NUMBER` when you dial). Do not commit either value. The Saturday demo and `uv run pytest` do not need a key. Offline commands do not import Guava. Building an agent for SDK inspection imports it without starting a transport; listening requires the separate inbound gate.
 
 ## License
 
