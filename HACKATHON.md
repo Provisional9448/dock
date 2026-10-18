@@ -31,7 +31,8 @@
 - Run tests before pushing (see AGENTS.md).
 - Don't edit files in someone else's lane without saying so in the PR.
 
-## Live status (updated 6:55 PM PT)
+## Live status (updated 8:05 PM PT)
+- Landing page live (8:04 PM): https://dock-landing-production.up.railway.app (PR #7, merge a46d47c, `packages/dock-landing`, Railway service `dock-landing`). "Talk to an agent" calls (240) 212-5485; try LL-88421 + a name/company. Excluded from the uv workspace so the desk and voice line still `uv sync --frozen`.
 - Pitch: shipper, consignee, broker, carrier all on the same page.
 - Box build (in progress): Guava inbound voice agent (`packages/dock-voice`) handling track/status/driver-report/doc requests from any party; live web views; replay mode; `docs/DEMO-SCRIPT.md`.
 - Merged: PR #1 `dock-notify` heads-up SMS + voice script.
