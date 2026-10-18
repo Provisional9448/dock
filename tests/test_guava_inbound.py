@@ -247,3 +247,95 @@ def test_question_read_failure_returns_unavailable():
     answer = agent.handlers['question'](call, 'Current status?')
     assert 'unavailable' in answer
     assert 'private filesystem' not in answer
+
+
+class FakeHandoff:
+    def __init__(self, status='disabled'):
+        self.status = status
+        self.calls = []
+
+    def request(self, call):
+        self.calls.append(call.id)
+        return {'status': self.status}
+
+
+def handoff_setup(status='disabled'):
+    session = FakeSession()
+    gate = FakeHandoff(status)
+    agent = build_agent(session, sdk=SimpleNamespace(Agent=FakeAgent, Field=lambda **kw: kw), handoff=gate)
+    call = FakeCall()
+    agent.handlers['start'](call)
+    return session, agent, call, gate
+
+
+def test_human_before_load_disabled_is_honest_and_does_not_save():
+    session, agent, call, gate = handoff_setup()
+    load_field = next(f for f in call.task['checklist'] if f['key'].endswith('_load'))
+    assert load_field['required'] is False
+    complete(agent, call, action='human')
+    assert gate.calls == [call.id]
+    assert call.get_variable('dock_load') is None
+    assert call.task_id.startswith('identify_')
+    assert session.reports == []
+    assert any('not enabled' in text for text in call.instructions)
+
+
+@pytest.mark.parametrize('phase', ['report', 'confirm'])
+def test_human_interrupts_report_without_persistence(phase):
+    session, agent, call, gate = handoff_setup('requested')
+    complete(agent, call, load='LL-88421')
+    complete(agent, call, action='report')
+    if phase == 'confirm':
+        complete(agent, call, state='unloading_started', time='now', detail='actually started')
+        assert call.get_variable('dock_pending')
+        completed = complete(agent, call, confirmation='human')
+    else:
+        completed = complete(agent, call, state='human')
+    assert call.get_variable('dock_pending') is None
+    assert call.get_variable('dock_task') == 'handoff_pending'
+    assert gate.calls == [call.id]
+    assert session.reports == []
+    agent.handlers['complete'](call, completed)
+    assert gate.calls == [call.id]
+    assert session.reports == []
+
+
+@pytest.mark.parametrize('status', ['unavailable', 'cooldown', 'failed'])
+def test_unavailable_handoff_resumes_assistance_without_promises(status):
+    session, agent, call, gate = handoff_setup(status)
+    complete(agent, call, load='LL-88421')
+    complete(agent, call, action='human')
+    assert call.task_id.startswith('offer_')
+    assert session.reports == []
+    assert any('no callback is promised' in text for text in call.instructions)
+
+
+def test_gate_duplicate_does_not_request_again_or_claim_connected():
+    session, agent, call, gate = handoff_setup('duplicate')
+    original = complete(agent, call, action='human')
+    agent.handlers['complete'](call, original)
+    assert gate.calls == [call.id]
+    assert call.get_variable('dock_task') == 'handoff_pending'
+    assert any('Do not claim a person answered' in text for text in call.instructions)
+    assert session.reports == []
+
+
+def test_anger_without_explicit_human_choice_does_not_request_handoff():
+    session, agent, call, gate = handoff_setup()
+    complete(agent, call, load='LL-88421')
+    agent.handlers['question'](call, 'This is ridiculous, where is my load?')
+    assert gate.calls == []
+    assert session.reports == []
+
+
+def test_gate_storage_failure_is_unavailable_and_drops_pending():
+    session, agent, call, gate = handoff_setup()
+    begin_report(agent, call)
+    def fail(call):
+        raise OSError('private storage path')
+    gate.request = fail
+    complete(agent, call, confirmation='human')
+    assert call.get_variable('dock_pending') is None
+    assert call.task_id.startswith('offer_')
+    assert ('Human handoff result', {'status': 'unavailable'}) in call.infos
+    assert session.reports == []

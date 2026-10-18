@@ -1,6 +1,6 @@
 # Inbound-only demo
 
-This is the October 17 sprint: one fictional load, English, shipment status and confirmed on-site reports. No outbound calls, SMS, transfers or automatic dispatch notifications.
+This is the October 17 sprint: one fictional load, English, shipment status and confirmed on-site reports. No outbound calls, SMS or automatic dispatch notifications. Optional human transfer is disabled by default.
 
 ## Prepare and inspect offline
 
@@ -84,3 +84,35 @@ Offline tests exercise real event persistence/clock code and Guava handlers with
 October 17 hosted text-test follow-up: three scripted Guava test sessions exercised an angry status request, pressure for a guaranteed ETA/refund/callback/transfer, and repeated personal abuse. After the conversation fix, all three spoke the recorded timestamp as 2:08 PM ET, omitted repeated action menus, and left the isolated event logs unchanged. Unsupported promises were refused. The abuse case warned the caller, allowed another turn, then ended after continued insults. These are single-run observations, not a guarantee of every future conversation or phone/audio behavior. The offline suite passed 78 tests.
 
 Facility-local timestamp labels are formatted in code; UTC timestamps remain unchanged in storage. Call guidance acknowledges frustration briefly, keeps status questions read-only, and requires a warning before ending continued personal abuse. Swearing alone is not a reason to end the call. The running phone listener must be restarted separately to load code changes.
+
+
+## Optional human handoff
+
+An explicit request for a person qualifies, including before providing a load number.
+Frustration or swearing alone does not initiate a transfer. Pending shipment reports
+are discarded on handoff requests, never saved as a side effect.
+
+Real transfers stay off until the operator verifies account/hackathon eligibility
+and approves a destination. Configure `DOCK_TRANSFER_MODE=live`, one fixed
+`DOCK_HUMAN_NUMBER` in international phone format, `DOCK_HUMAN_AVAILABLE=true`,
+and `DOCK_HANDOFF_STATE` pointing to a dedicated private runtime file.
+The availability flag is manual; this demo does not query a staffed queue.
+Do not set the destination to the inbound agent's own number.
+
+Limits: one transfer attempt per call and a ten-minute cooldown per incoming caller
+number, shared through a locked state file. Failed attempts also consume the limit.
+Missing caller identity or unavailable configuration means no transfer. Caller ID
+is a throttling signal, not verified identity; this does not stop someone using
+multiple numbers. Caller-provided destination numbers are never used.
+
+The agent can report that a connection is being attempted, not that a human has
+answered. The SDK command does not establish answer/no-answer outcomes here.
+There is no automatic retry or promised callback. Keep the feature disabled for
+normal inbound-only rehearsals until a real transfer test is separately approved.
+
+Handoff verification: 109 offline tests passed. A separate 16-request/eight-process
+probe allowed one fake transfer and denied the other 15 on cooldown. Hosted text
+sessions with fake gate outcomes exercised a human request before a load number,
+disabled transfer, and repeated requests after submission. The final pending-case
+transcript retained uncertainty about the connection and invoked the fake gate once;
+no shipment events changed. No real transfer or answer/no-answer handling was tested.
