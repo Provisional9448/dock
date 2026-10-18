@@ -1,0 +1,13 @@
+0:00 AGENT  Hi Luis, it's Doc, Red Kettle's automated line, on load 8 8 4 2 1. Calls are recorded. How's it going there?
+  0:15 AGENT  You still there, Luis?
+  0:18 HUMAN  Hi, Lewis here, checking in. I'm at Harbor and Rye, Clerk said about 40 minutes.
+  0:26 AGENT  Got it. What time did you check in?
+  0:30 HUMAN  two oh six
+  0:32 AGENT  Got it, 2:06. 
+  0:34 AGENT  I have you checked in and waiting for a door, and the clerk said about 40 minutes. 
+  0:37 AGENT  Thanks, Luis.
+  0:39 AGENT  Okay, you checked in at 2:06 and Clerk said about 40 minutes. 
+  0:42 AGENT  Give me a call when they start unloading. 
+  0:44 AGENT  Anything else?
+  0:49 HUMAN  No, that's it.
+  0:53 AGENT  Thanks Luis. Bye.

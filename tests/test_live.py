@@ -545,3 +545,28 @@ def test_lines_sound_like_a_dispatcher(run):
         for banned in ("load record", "load trail", "logged", "automated ai assistant", "timestamped record", "one moment"):
             assert banned not in low, (banned, line)
         assert len(line) < 330, line
+
+
+def test_take5_single_confirm_clerk_and_times(run):
+    """Take 5 (7:19 PM): the model confirmed '2:06' on its own before Doc's read-back (two confirms), the read-back
+    said 'Clerk said', and 'You still there?' fired early. One confirm only, 'the clerk', '2:06', softer nudge."""
+    from dock_voice import agent as agent_mod
+    from dock_voice.script import _who_said, driver_readback
+
+    snap = _checked_in(run)
+    text = driver_readback(snap, "arrived", {"at_local": "02:06 PM ET", "said_by": "Clerk", "said": "about 40 minutes"})
+    assert text == ("Okay, you checked in at 2:06 and the clerk said about 40 minutes. "
+                    "Give me a call when they start unloading. Anything else?")
+    assert _who_said("Dana") == "Dana" and _who_said("") == "they" and _who_said("receiving clerk") == "the receiving clerk"
+    assert "You still there" in agent_mod.PATIENCE and "Take your time" in agent_mod.PATIENCE
+    try:
+        agent = agent_mod.build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    from guava.testing import MockCall
+
+    call = MockCall()
+    call.set_field("role", "driver")
+    agent._on_task_complete_handlers["who"](call)
+    task = " ".join(repr(c) for c in call._command_queue)
+    assert "Do not confirm, repeat, summarize, or thank him" in task

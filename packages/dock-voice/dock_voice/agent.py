@@ -45,6 +45,10 @@ NAME_NOTE = (
 log = logging.getLogger("dock-voice")
 
 DISCLOSURE = greeting(None)  # unknown caller; known callers get greeting(role)
+PATIENCE = (
+    " Silence: callers are often walking or driving. After you speak, wait quietly. Never say 'You still there?'. "
+    "Only if the caller has said nothing for a long while (about 20 seconds), say once, softly: 'Take your time.'"
+)
 STYLE = (
     " Talk like a person on the phone: short, plain, natural. State the situation and give each caller only what "
     "they act on. Never say 'load trail', 'load record', 'logged', "
@@ -136,6 +140,7 @@ def build_agent(run: LiveRun):
             "amount is an estimate until the client agrees to it: never call it a bill or an invoice."
             + NAME_NOTE
             + STYLE
+            + PATIENCE
         ),
         pronunciations={"LL-88421": "L L 8 8 4 2 1", "Luis": "Loo-EES"},
     )
@@ -224,7 +229,9 @@ def build_agent(run: LiveRun):
                     "was told to wait; do not give directions. Fill every field you can from what he already said "
                     "and only ask for what is missing. If his first sentence gave the check-in time and what the "
                     "receiver told him, ask nothing and finish right away. Never ask who the clerk was. "
-                    "Never say 'one moment' or 'processing'." + STYLE
+                    "Never say 'one moment' or 'processing'. Do not confirm, repeat, summarize, or thank him for "
+                    "his answers, not even 'Got it, 2:06': when the fields are filled, say nothing at all, because "
+                    "Doc's single confirmation is spoken right after." + STYLE
                 ),
                 checklist=[
                     guava.Field(

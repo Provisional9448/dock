@@ -243,7 +243,7 @@ def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
     for shipper, consignee and broker calls). One or two short sentences, then 'Anything else?'."""
     r = record or {}
     at = hm(r.get("at_local") or snap["clock_local"])
-    said_by = r.get("said_by") or "they"
+    said_by = _who_said(r.get("said_by"))
     said = (r.get("said") or "").strip().rstrip(".")
     if said:
         told = f" and {said_by} said {said}"
@@ -260,6 +260,20 @@ def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
     else:
         text = f"Okay, unloaded at {at}. Anything else?"
     return spoken(text)
+
+
+def _who_said(name: object) -> str:
+    """'Dana' stays 'Dana'; a job title gets 'the': 'Clerk' -> 'the clerk'. Blank -> 'they'."""
+    text = " ".join(str(name or "").split()).strip(" .")
+    if not text:
+        return "they"
+    low = text.lower()
+    if low.startswith(("the ", "a ")):
+        return low
+    titles = ("clerk", "receiving", "receiver", "guard", "manager", "warehouse", "dock", "lumper", "shipping", "office", "supervisor", "dispatcher")
+    if low.split()[0] in titles:
+        return "the " + low
+    return text
 
 
 def _driver_report(snap: dict) -> dict:
