@@ -286,15 +286,30 @@ def _status(snap: dict) -> str:
 def shipper_brief(snap: dict) -> str:
     """Shipper: on time? If the shipper pays on this load: will it cost me and what to do (call the DC).
     Otherwise status only."""
-    s = snap["summary"]
-    text = _status(snap)
+    s, d = snap["summary"], _driver_report(snap)
+    if d["checked_in"] and s["phase"] in ("running", "warning", "accruing"):
+        told = " and was told about " + (d["said"] if d["said"] else "a wait")
+        m = re.search(r"(\d+)\s*min", d["said"] or "")
+        if m:
+            told = f" and was told about {m.group(1)} minutes"
+        text = f"Luis checked in at {d['checked_in']}{told}."
+    else:
+        text = _status(snap)
     if payer_role(snap) == "shipper" and s["phase"] != "not_started":
         text += " " + _money(snap)
-        if s["phase"] in ("running", "warning"):
-            text += f" To avoid it, get the DC to start unloading before {s['free_time_ends_local']}."
-        elif s["phase"] == "accruing":
-            text += " Calling the DC now is what stops it."
+        if s["phase"] in ("running", "warning", "accruing"):
+            text += " Want to call Harbor and Rye receiving? Call this line back with what they tell you."
     return spoken(text)
+
+
+def promise_readback(promise: dict) -> str:
+    who = promise["who"]
+    who = who if who.startswith(("the ", "receiving")) else f"the {who}"
+    door = f" {promise['door']}" if promise.get("door") else ""
+    return spoken(
+        f"Got it: {who} says{door} by {promise['eta_local']}. It's on the load record with the time "
+        "and who said it, and the broker has been told. Anything else?"
+    )
 
 
 def consignee_brief(snap: dict) -> str:

@@ -16,7 +16,7 @@ import logging
 
 from dock_web.live import LiveDesk, LiveRun
 
-from dock_voice.record import log_receiver, build_driver_events, local_snapshot, post_later, queue_notices
+from dock_voice.record import promise_events, receiver_promise, log_receiver, build_driver_events, local_snapshot, post_later, queue_notices
 from dock_voice.script import (
     DRIVER_STATUS,
     answer_question,
@@ -29,6 +29,7 @@ from dock_voice.script import (
     goodbye_line,
     payer_role,
     pick_status,
+    promise_readback,
     shipper_brief,
     spoken,
 )
@@ -252,8 +253,9 @@ def build_agent(run: LiveRun):
             call.set_task(
                 "heads_up",
                 objective=(
-                    "Shipper call. Read the brief exactly. "
-                    + ("They pay detention on this load: ask what they will do (e.g. call the DC) and by when."
+                    "Shipper call. If they open by saying they already called the warehouse or receiving and got a "
+                    "time, skip the brief and just record what they were told. Otherwise read the brief exactly. "
+                    + ("They pay detention on this load."
                        if payer else "They do not pay detention on this load: status only, no money talk.")
                 ),
                 checklist=[
@@ -261,7 +263,11 @@ def build_agent(run: LiveRun):
                     guava.Field(
                         key="plan",
                         field_type="text",
-                        question="What will you do, and by when?" if payer else "Anything you need from us on this load?",
+                        description=(
+                            "What they will do, or what the warehouse / receiving told them (who said it, door, time), "
+                            "close to their words."
+                        ),
+                        question="What did Harbor and Rye tell you, or what will you do?" if payer else "Anything you need from us on this load?",
                         required=payer,
                     ),
                 ],
@@ -347,6 +353,12 @@ def build_agent(run: LiveRun):
         snap = desk.snapshot()
         body = call.get_variable("heads_up", snap["heads_up"][to_role])
         plan = str(call.get_field("plan") or "")
+        promise = receiver_promise(run.context, plan, run.now(), via_role=to_role) if plan else None
+        if promise:
+            now = run.now()
+            post_later(run, promise_events(run.context, promise, now), f"{to_role} promise")
+            wrap_up(call, promise_readback(promise))
+            return
         post_later(
             run,
             [],

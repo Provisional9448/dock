@@ -404,8 +404,9 @@ def test_role_shipper_payer_gets_cutoff_cost_and_action(run):
     snap = _checked_in(run)
     assert payer_role(snap) == "shipper"  # fictional per-load terms in parties.json
     text = shipper_brief(snap)
-    assert "checked in at 2:06 PM Eastern" in text and "Free time ends at 4:06 PM Eastern" in text
-    assert "$75 an hour" in text and "get the DC to start unloading before 4:06 PM Eastern" in text
+    assert text.startswith("Luis checked in at 2:06 PM Eastern and was told about 40 minutes.")
+    assert "Free time ends at 4:06 PM Eastern" in text and "$75 an hour" in text
+    assert text.endswith("Want to call Harbor and Rye receiving? Call this line back with what they tell you.")
     assert "Dock will bill" not in text
 
 
@@ -457,3 +458,30 @@ def test_driver_update_queues_payer_call_and_broker_message(run):
     assert broker.payload["summary"].startswith("Message to broker") and "carrier's invoice" in broker.payload["summary"]
     rows = [row["event"] for row in LiveDesk(run).snapshot()["events"]]
     assert sum(1 for r in rows if r["type"] == "call_result") == 2
+
+
+def test_shipper_call_back_logs_receiver_promise_and_messages_broker(run):
+    """Anthony 6:50 PM: the shipper calls the warehouse, then calls Dock back with what they said."""
+    from guava.testing import MockCall
+
+    from dock_voice.agent import build_agent
+
+    _checked_in(run)
+    run.set_now(parse_time("2026-10-17T18:10:00Z"))
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    call = MockCall()
+    call.set_field("role", "shipper")
+    agent._on_task_complete_handlers["who"](call)
+    call.set_field("plan", "I called the warehouse manager and they'll have him in door 4 in 20 minutes")
+    agent._on_task_complete_handlers["heads_up"](call)
+    said = " ".join(repr(c) for c in call._command_queue)
+    assert "Got it: the warehouse manager says door 4 by 2:30 PM Eastern." in said and "broker has been told" in said
+    events = _wait_for(run, 4)
+    promise, broker = [e for e in events if e.type == "call_result"][-2:]
+    assert promise.payload["goal"] == "receiver_promise" and promise.occurred_at == "2026-10-17T18:10:00Z"
+    assert "warehouse manager said door 4 by 2:30 PM ET" in promise.payload["summary"]
+    assert "Sam Okonkwo (shipper)" in promise.payload["summary"]
+    assert broker.payload["to_role"] == "broker" and "carrier's invoice" in broker.payload["summary"]

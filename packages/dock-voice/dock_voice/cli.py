@@ -1,4 +1,4 @@
-"""dock-voice serve | chat | roleplay <driver|driver-update|shipper|consignee|broker>
+"""dock-voice serve | chat | roleplay <driver|driver-update|shipper|shipper-callback|consignee|broker>
 
 serve     listen on GUAVA_AGENT_NUMBER (inbound only; outbound is never dialed)
 chat      text chat with the agent in the terminal (no phone)
@@ -29,8 +29,14 @@ ROLEPLAYS = {
     "shipper": (
         "You are Sam Okonkwo at Northwind Orchards, the shipper on load LL-88421; on this load the shipper pays "
         "detention. Answer one short sentence per turn. When asked who you are, say you're the shipper. Listen. "
-        "When asked what you'll do, say you'll call Harbor and Rye now and push them to start unloading within 20 "
-        "minutes. When asked if there is anything else, say no, that is it. Do not hang up until the agent says goodbye."
+        "When asked what you'll do, say you'll call Harbor and Rye receiving now. When asked if there is anything "
+        "else, say no, that is it. Do not hang up until the agent says goodbye."
+    ),
+    "shipper-callback": (
+        "You are Sam Okonkwo at Northwind Orchards, the shipper on load LL-88421, calling Dock back. Say you're the "
+        "shipper. Then say: 'I called the warehouse manager at Harbor and Rye; they'll have him in door 4 in 20 "
+        "minutes.' One short sentence per turn. When asked if there is anything else, say no, that is it. Do not "
+        "hang up until the agent says goodbye."
     ),
     "consignee": (
         "You are Priya Shah at Harbor and Rye Grocery DC, the consignee on load LL-88421. One short sentence per "

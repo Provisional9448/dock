@@ -218,6 +218,76 @@ def log_receiver(run, answer: str, zone: str) -> list[Event]:
     return run.append([event])
 
 
+def receiver_promise(context: dict, text: str, now: datetime, *, via_role: str = "shipper") -> dict | None:
+    """'I called the warehouse manager, they'll have him in door 4 in 20 minutes' / 'unloading by 2:45' ->
+    {who, door, eta_local, minutes, words}. None if there's no promise in it."""
+    import re
+
+    from dock_voice.script import parse_clock, parse_minutes
+
+    zone = context["load"].get("timezone", "America/New_York")
+    low = " ".join(text.lower().split())
+    minutes = parse_minutes(text)
+    at = None
+    by = re.search(r"\b(?:by|at|around)\s+(\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?)", low)
+    if by:
+        at = parse_clock(by.group(1) if ":" in by.group(1) or "m" in by.group(1) else by.group(1) + ":00", now, zone, ahead_minutes=12 * 60)
+        if at is not None and at < now:
+            at = None
+    if at is None and minutes:
+        at = now + timedelta(minutes=minutes)
+    if at is None:
+        return None
+    who = "the receiver"
+    for phrase in ("warehouse manager", "dock manager", "receiving manager", "receiving clerk", "receiving", "the manager", "the dc"):
+        if phrase in low:
+            who = {"receiving": "receiving", "the dc": "the DC"}.get(phrase, phrase.replace("the ", ""))
+            break
+    door = re.search(r"\bdoor\s+(\w+)", low)
+    return {
+        "who": who,
+        "door": f"door {door.group(1)}" if door else None,
+        "eta_local": format_local(format_time(at), zone),
+        "eta_at": format_time(at),
+        "minutes": minutes,
+        "words": text.strip(),
+        "via_role": via_role,
+    }
+
+
+def promise_events(context: dict, promise: dict, now: datetime, *, broker_text: str = "") -> list[Event]:
+    """The receiver's promise as relayed by the shipper/consignee (timestamped, who said it), plus the broker message."""
+    load = context["load"]
+    parties = {p["role"]: p for p in context["parties"]}
+    stamp = format_time(now)
+    tag = uuid.uuid4().hex[:10]
+    via = parties.get(promise["via_role"]) or parties["shipper"]
+    door = f" {promise['door']}" if promise.get("door") else ""
+    summary = (
+        f"Receiver promise relayed by {via['contact']} ({promise['via_role']}): {promise['who']} said{door} by "
+        f"{promise['eta_local']}. Their words: {promise['words']}"
+    )[:400]
+    out = [Event(
+        event_id=f"prm-{tag}", type="call_result", occurred_at=stamp, recorded_at=stamp, load_id=load["load_id"],
+        actor=Actor(role="system", party_id="dock-voice", channel="voice"), source="dock-voice",
+        payload={"goal": "receiver_promise", "outcome": "reached", "to_party_id": via["party_id"],
+                 "to_name": via["contact"], "to_role": promise["via_role"], "summary": summary},
+    )]
+    broker = parties.get("broker")
+    if broker:
+        out.append(Event(
+            event_id=f"ntq-broker-{tag}", type="call_result", occurred_at=stamp, recorded_at=stamp,
+            load_id=load["load_id"], actor=Actor(role="system", party_id="dock-voice", channel="sms"),
+            caused_by=f"prm-{tag}", source="dock-voice",
+            payload={"goal": "broker_message_queued", "outcome": "dry_run", "to_party_id": broker["party_id"],
+                     "to_name": broker["contact"], "to_role": "broker",
+                     "summary": "Message to broker (SMS disabled in demo): " + (broker_text or (
+                         f"Update on {load['load_id']}: {promise['who']} told the {promise['via_role']}{door} by "
+                         f"{promise['eta_local']}. On the timestamped record that backs the carrier's invoice."))},
+        ))
+    return out
+
+
 def mirror(run, events: list[Event], label: str = "driver") -> bool:
     """Best effort copy to a second desk (DOCK_MIRROR_URL, e.g. the public Railway desk) with the same demo
     clock. The local log stays the source of truth; a failure here is logged and ignored."""
