@@ -65,10 +65,10 @@ def test_heads_up_quotes_zero_then_the_accrual(sample_dir):
     warning = next(event for event in notices if event.payload["phase"] == "warning" and event.payload["to_role"] == "shipper")
     assert "Not an invoice." in warning.payload["body"]
     assert "$0.00" in warning.payload["body"]
-    assert "Sam Okonkwo" in warning.payload["body"]
+    assert "Dan Okonkwo" in warning.payload["body"]
     accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "shipper")
     assert "$18.75" in accruing.payload["body"]
-    assert "Sam Okonkwo" in accruing.payload["body"]
+    assert "Dan Okonkwo" in accruing.payload["body"]
     # payer-only: the shipper pays on LL-88421 (fictional terms), so the consignee gets no money heads-up
     assert not any(event.payload["to_role"] == "consignee" for event in notices)
     broker = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "broker")
@@ -122,7 +122,7 @@ def test_proof_is_a_trail_not_an_invoice(sample_dir):
     assert "This is not an invoice." in markdown
     assert "$56.25" in markdown
     assert "Priya said door 4 is still occupied" in markdown
-    assert "Sam Okonkwo" in markdown
+    assert "Dan Okonkwo" in markdown
     early = replay_clock(_raw(sample_dir), as_of=parse_time("2026-10-17T18:10:00Z"), policy=policy_from_context(context))
     early_doc = render_markdown(early, "LL-88421")
     assert "No detention estimate yet." in early_doc

@@ -321,7 +321,7 @@
       const notices = desk.events.filter((row) => row.event.type === "notice_sent" && row.event.payload.to_role === "shipper");
       const wrap = el("div");
       wrap.append(
-        el("h2", {}, ["Shipper desk · Sam Okonkwo, Northwind Orchards"]),
+        el("h2", {}, ["Shipper desk · Dan Okonkwo, Northwind Orchards"]),
         el("p", {}, ["These are the heads-ups dock-notify composed. They are logged. They were not sent to a phone."]),
       );
       if (!notices.length) {

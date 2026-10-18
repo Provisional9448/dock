@@ -33,7 +33,7 @@ BROKER = {
 }
 SHIPPER = {
     "shipper_name": "Northwind Orchards",
-    "shipper_contact": "Sam Okonkwo",
+    "shipper_contact": "Dan Okonkwo",
     "shipper_party_id": "pty_northwind",
     "shipper_phone": "+15555550131",
 }
@@ -105,7 +105,7 @@ LOADS: list[dict] = [
                 "role": "shipper",
                 "phase": "accruing",
                 "estimate": "18.75",
-                "summary": "Sam Okonkwo heard the $18.75 estimate and said he will push Crestline for a door.",
+                "summary": "Dan Okonkwo heard the $18.75 estimate and said he will push Crestline for a door.",
             },
         ],
     },
@@ -135,7 +135,7 @@ LOADS: list[dict] = [
                 "role": "shipper",
                 "phase": "warning",
                 "estimate": "0.00",
-                "summary": "Sam Okonkwo heard the heads-up. Estimate $0.00. Free time ends 3:38 PM ET.",
+                "summary": "Dan Okonkwo heard the heads-up. Estimate $0.00. Free time ends 3:38 PM ET.",
             },
         ],
     },

@@ -125,7 +125,7 @@ function rail(d){
   r.append(el("div",{class:"now",style:`left:${pos(now)}%`}));
 }
 function fmt(iso,d){ const row=d.events.find(r=>r.event.occurred_at===iso); if(row) return row.occurred_local; return new Date(iso).toLocaleTimeString("en-US",{timeZone:d.load.timezone,hour:"numeric",minute:"2-digit"})+" ET"; }
-const PARTY={shipper:{who:"Shipper · Sam Okonkwo, Northwind Orchards",say:"What Dock says when Sam calls in (the outbound heads-up)"},consignee:{who:"Consignee · Priya Shah, Harbor & Rye DC",say:"What Dock says when Priya calls in (the outbound heads-up)"}};
+const PARTY={shipper:{who:"Shipper · Dan Okonkwo, Northwind Orchards",say:"What Dock says when Dan calls in (the outbound heads-up)"},consignee:{who:"Consignee · Priya Shah, Harbor & Rye DC",say:"What Dock says when Priya calls in (the outbound heads-up)"}};
 function party(d, role){
   const s=d.summary, col=document.getElementById(role), P=PARTY[role];
   const notices=d.events.filter(r=>r.event.type==="notice_sent"&&r.event.payload.to_role===role);

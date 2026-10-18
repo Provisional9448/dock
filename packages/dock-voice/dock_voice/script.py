@@ -29,7 +29,7 @@ def pick_role(answer: object) -> str:
         return first[1]
     names = {
         "consignee": ("receiver", "receiving", "dc", "warehouse", "harbor", "dock office", "priya"),
-        "shipper": ("northwind", "sam ", "sam,", "sam.", "this is sam"),
+        "shipper": ("northwind", "dan ", "dan,", "dan.", "this is dan"),
         "broker": ("lantern", "alex"),
         "driver": ("carrier", "dispatch", "truck", "luis", "red kettle"),
     }
@@ -68,7 +68,7 @@ def spoken(text: str) -> str:
 
 
 LOAD_SPOKEN = "8 8 4 2 1"
-NAMES = {"driver": "Luis", "shipper": "Sam", "consignee": "Priya", "broker": "Alex"}
+NAMES = {"driver": "Luis", "shipper": "Dan", "consignee": "Priya", "broker": "Alex"}
 
 
 def hm(local: str | None) -> str:
@@ -300,8 +300,7 @@ def _money(snap: dict) -> str:
     s = snap["summary"]
     if s["phase"] in ("running", "warning"):
         return (
-            f"Free time ends at {hm(s['free_time_ends_local'])}, about {span_words(s['remaining_free_minutes'])} from "
-            f"now. After that, detention is {_rate(snap)}."
+            f"Free time ends at {hm(s['free_time_ends_local'])}. After that, detention is {_rate(snap)}."
         )
     if s["phase"] == "accruing":
         return (
@@ -313,13 +312,14 @@ def _money(snap: dict) -> str:
     return ""
 
 
-def _status(snap: dict) -> str:
+def _status(snap: dict, zone: bool = True) -> str:
     s, d = snap["summary"], _driver_report(snap)
     if not d["checked_in"]:
         return "Luis hasn't checked in at Harbor and Rye yet."
     if s["phase"] == "closed":
         return f"Luis checked in at Harbor and Rye at {hm_zone(d['checked_in'])}, and they're unloading him now."
-    return f"Luis is waiting for a door at Harbor and Rye. He checked in at {hm_zone(d['checked_in'])}{_told(d)}."
+    at = hm_zone(d["checked_in"]) if zone else hm(d["checked_in"])
+    return f"Luis is waiting for a door at Harbor and Rye. He checked in at {at}{_told(d)}."
 
 
 def _told(d: dict) -> str:
@@ -335,7 +335,7 @@ def shipper_brief(snap: dict) -> str:
     """Shipper: on time? If the shipper pays on this load: will it cost me and what to do (call the DC).
     Otherwise status only."""
     s, d = snap["summary"], _driver_report(snap)
-    text = _status(snap)
+    text = _status(snap, zone=False)
     if payer_role(snap) == "shipper" and s["phase"] != "not_started":
         text += " " + _money(snap)
         if s["phase"] in ("running", "warning", "accruing"):

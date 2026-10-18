@@ -24,7 +24,7 @@ uv run dock-events cat data/samples/harbor-rye.raw.jsonl \
 - Derived events have deterministic ids. Appending twice is a no-op. Do not delete or rewrite a line to "fix" a replay.
 - `dock-clock` drops facts after `--as-of`. Do not "helpfully" include the future unload when computing a warning.
 
-`arrived` already carries party names and phones. Do not add a database so notify can look up Sam. If a new fact is required later, put it on the event.
+`arrived` already carries party names and phones. Do not add a database so notify can look up Dan. If a new fact is required later, put it on the event.
 
 ## Conventions
 

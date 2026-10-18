@@ -28,7 +28,7 @@ MOCK_WARNING = (
 )
 
 PARTIES = (
-    Party("shipper", "Northwind Orchards", "Sam Okonkwo", "+15555550131", "pty_northwind"),
+    Party("shipper", "Northwind Orchards", "Dan Okonkwo", "+15555550131", "pty_northwind"),
     Party("consignee", "Harbor & Rye Grocery", "Priya Shah", "+15555550121", "pty_harbor_rye"),
     Party("carrier", "Red Kettle Freight", "Dispatch", "+15555550151", "pty_red_kettle"),
 )
@@ -58,7 +58,7 @@ def test_warning_matches_the_mock_and_says_it_is_not_an_invoice():
     assert note.billable_minutes == 0
     assert note.sms.startswith(MOCK_WARNING)
     assert "Not an invoice." in note.sms
-    assert "Sam Okonkwo" in note.sms
+    assert "Dan Okonkwo" in note.sms
     assert "If unload starts before 4:06 PM ET, it stays $0.00." in note.sms
     assert "Not an invoice." in note.voice
     assert "$0.00" in note.voice
@@ -242,7 +242,7 @@ def test_pipe_records_sms_and_voice_without_sending(sample_dir):
     )
     assert "Estimate so far $0.00." in warning.payload["body"]
     assert "Not an invoice." in warning.payload["body"]
-    assert "Sam Okonkwo" in warning.payload["body"]
+    assert "Dan Okonkwo" in warning.payload["body"]
     assert "Start the unload before 4:06 PM ET." in warning.payload["body"]
     assert "Not an invoice." in warning.payload["voice"]
     assert "$0.00" in warning.payload["voice"]
@@ -250,7 +250,7 @@ def test_pipe_records_sms_and_voice_without_sending(sample_dir):
     assert warning.payload["voice"] not in capture.bodies
     accruing = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "shipper")
     assert "$18.75" in accruing.payload["body"]
-    assert "Sam Okonkwo" in accruing.payload["body"]
+    assert "Dan Okonkwo" in accruing.payload["body"]
     # payer-only: the shipper pays on LL-88421 (fictional terms), so the consignee gets no money heads-up
     assert not any(event.payload["to_role"] == "consignee" for event in notices)
     broker = next(event for event in notices if event.payload["phase"] == "accruing" and event.payload["to_role"] == "broker")

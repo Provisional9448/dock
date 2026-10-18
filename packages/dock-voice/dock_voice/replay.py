@@ -51,10 +51,10 @@ def replay(run: LiveRun, pause: float = 4.0, say=print) -> None:
         call_id="replay-sam",
         to_role="shipper",
         body=snap["heads_up"]["shipper"],
-        reply="Sam said he will call Harbor and Rye now and push for an unload within 20 minutes.",
+        reply="Dan said he will call Harbor and Rye now and push for an unload within 20 minutes.",
         summary=snap["summary"],
     )
-    beat("Shipper call-in (the outbound heads-up, shown inbound): Sam heard it and committed.")
+    beat("Shipper call-in (the outbound heads-up, shown inbound): Dan heard it and committed.")
     run.advance(4)
     snap = desk.snapshot()
     run.heads_up_by_voice(

@@ -98,7 +98,7 @@ Money is a string with two decimals (`"56.25"`), never a JSON float. Phone numbe
 | `claim_drafted` | dock-proof | Title, markdown, estimate |
 | `tracking_requested` | dock-track | `intent`, `summary`. Extra keys may carry the caller role, identifiers, a condition, and `same_instructions` |
 
-`arrived` carries a snapshot of the parties so later modules do not join a database. `shipper_contact` and `consignee_contact` are optional extra keys the sample uses so a heads-up can name Sam and Priya. The required name fields stay the company names, which is what the proof pack prints under Parties.
+`arrived` carries a snapshot of the parties so later modules do not join a database. `shipper_contact` and `consignee_contact` are optional extra keys the sample uses so a heads-up can name Dan and Priya. The required name fields stay the company names, which is what the proof pack prints under Parties.
 
 Call outcomes: `reached`, `voicemail`, `no_answer`, `wrong_person`, `dry_run`.
 

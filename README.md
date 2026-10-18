@@ -52,7 +52,7 @@ No carrier, no Guava account, no SMS provider.
 
 1. `uv run dock-web --port 8741` and open [the desk](http://127.0.0.1:8741).
 2. You are on the carrier view. Luis Ortega is at Harbor & Rye, door 4. Free time is running. The estimate is `$0.00`.
-3. Press **30 min of free time left**. Switch to **Shipper**. Sam Okonkwo has a heads-up: `$0.00` so far, and the minute the clock starts costing money.
+3. Press **30 min of free time left**. Switch to **Shipper**. Dan Okonkwo has a heads-up: `$0.00` so far, and the minute the clock starts costing money.
 4. Press **15 min past free time**. The trail shows `$18.75`. Priya Shah's call is on the timeline: she asked for about 40 minutes, and the meter is already on.
 5. Press **Unload started**. Switch to **Broker**. The clock has stopped. The pack supports `$56.25`. It says, on the page, that this is not an invoice.
 

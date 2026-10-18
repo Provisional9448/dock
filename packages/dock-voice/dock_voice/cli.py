@@ -27,13 +27,13 @@ ROLEPLAYS = {
         "say no, that's it. Do not hang up until Doc says bye."
     ),
     "shipper": (
-        "You are Sam Okonkwo at Northwind Orchards, the shipper on load 88421; on this load the shipper pays "
+        "You are Dan Okonkwo at Northwind Orchards, the shipper on load 88421; on this load the shipper pays "
         "detention. When Doc asks what it can do for you, say: 'Any update on my load?' Listen. When asked what you want to do, "
         "say you'll call Harbor and Rye receiving now. When asked if there is anything else, say no, that's it. "
         "Do not hang up until Doc says bye."
     ),
     "shipper-callback": (
-        "You are Sam Okonkwo at Northwind Orchards, the shipper on load 88421, calling Doc back. When Doc asks "
+        "You are Dan Okonkwo at Northwind Orchards, the shipper on load 88421, calling Doc back. When Doc asks "
         "what's up, say: 'I called the warehouse manager at Harbor and Rye; they'll have him in door 4 in 20 "
         "minutes.' When asked if there is anything else, say no, that's it. Do not hang up until Doc says bye."
     ),

@@ -307,7 +307,7 @@ def test_spoken_polish_name_zero_and_steps(run):
 
     assert spoken("Thanks, Louise. Checked in at 02:06 PM ET.") == "Thanks, Luis. Checked in at 2:06 PM Eastern."
     assert goodbye_line("driver") == "Thanks Luis. Bye."
-    assert goodbye_line("shipper") == "Thanks Sam. Bye." and "load record" not in goodbye_line("broker")
+    assert goodbye_line("shipper") == "Thanks Dan. Bye." and "load record" not in goodbye_line("broker")
     run.set_now(parse_time("2026-10-17T18:08:00Z"))
     log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
     from dock_voice.script import shipper_brief
@@ -404,8 +404,10 @@ def test_role_shipper_payer_gets_cutoff_cost_and_action(run):
     assert payer_role(snap) == "shipper"  # fictional per-load terms in parties.json
     text = shipper_brief(snap)
     # situation, free-time end, rate, ask them to check in, we'll call back if charges start
-    assert text.startswith("Luis is waiting for a door at Harbor and Rye. He checked in at 2:06 Eastern")
-    assert "Free time ends at 4:06" in text and "detention is $75 an hour" in text
+    assert text == ("Luis is waiting for a door at Harbor and Rye. He checked in at 2:06; they told him about 40 "
+                    "minutes. Free time ends at 4:06. After that, detention is $75 an hour. Could you check in with "
+                    "Harbor and Rye? If they give you a time, let me know. I'll call you if charges start.")
+    assert "Eastern" not in text and "from now" not in text
     assert "Could you check in with Harbor and Rye?" in text and text.endswith("I'll call you if charges start.")
     assert "Dock will bill" not in text
 
@@ -483,7 +485,7 @@ def test_shipper_call_back_logs_receiver_promise_and_messages_broker(run):
     promise, broker = [e for e in events if e.type == "call_result"][-2:]
     assert promise.payload["goal"] == "receiver_promise" and promise.occurred_at == "2026-10-17T18:10:00Z"
     assert "warehouse manager said door 4 by 2:30 PM ET" in promise.payload["summary"]
-    assert "Sam Okonkwo (shipper)" in promise.payload["summary"]
+    assert "Dan Okonkwo (shipper)" in promise.payload["summary"]
     assert broker.payload["to_role"] == "broker" and "carrier's invoice" in broker.payload["summary"]
 
 
@@ -494,7 +496,7 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
 
     ctx = run.context
     assert caller_party(ctx, "+12053516709", env={})["contact"] == "Luis Ortega"
-    assert caller_party(ctx, "(205) 351-6709", env={"DOCK_CALLER_ROLE": "shipper"})["contact"] == "Sam Okonkwo"
+    assert caller_party(ctx, "(205) 351-6709", env={"DOCK_CALLER_ROLE": "shipper"})["contact"] == "Dan Okonkwo"
     assert caller_party(ctx, "+15555550141", env={})["role"] == "broker"
     assert caller_party(ctx, "+15555550151", env={})["role"] == "driver"  # carrier dispatch -> driver path
     assert caller_party(ctx, "+14155550000", env={}) is None and caller_party(ctx, None, env={}) is None
@@ -520,7 +522,7 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     call = MockCall(call_info=PSTNCallInfo(from_number="+12053516709", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Hi Sam, it's Doc" in said and "shipper_open" in said
+    assert "Hi Dan, it's Doc" in said and "shipper_open" in said
 
     call = MockCall(call_info=PSTNCallInfo(from_number="+14155550000", to_number="+12402125485"))
     agent._on_call_start(call)

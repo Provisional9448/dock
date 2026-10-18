@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ENV="${DOCK_ENV:-$HOME/.config/dock/env.sh}"
 SRC="[ -f $ENV ] && . $ENV;"
-# Caller ID: the AgentLine demo phone is Luis (driver). DOCK_CALLER_ROLE=shipper ./scripts/demo-up.sh makes it Sam.
+# Caller ID: the AgentLine demo phone is Luis (driver). DOCK_CALLER_ROLE=shipper ./scripts/demo-up.sh makes it Dan.
 SRC="$SRC export DOCK_CALLER_ROLE=${DOCK_CALLER_ROLE:-};"
 # Local log is the source; the voice line mirrors its events to DOCK_LIVE_URL (best effort, off the call path).
 if [ "${DOCK_REMOTE:-0}" != "1" ]; then SRC="$SRC export DOCK_MIRROR_URL=\${DOCK_MIRROR_URL:-\${DOCK_LIVE_URL:-}}; unset DOCK_LIVE_URL;"; fi

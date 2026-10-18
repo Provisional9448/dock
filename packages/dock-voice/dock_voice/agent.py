@@ -163,7 +163,7 @@ def build_agent(run: LiveRun):
                     choices=["driver", "shipper", "consignee", "broker"],
                     description=(
                         "If the caller already said who they are (for example 'Driver. Hi, this is Luis', or a name: "
-                        "Luis is the driver, Sam the shipper, Priya the consignee, Alex the broker), fill this in "
+                        "Luis is the driver, Dan the shipper, Priya the consignee, Alex the broker), fill this in "
                         "without asking."
                     ),
                     question="Are you the driver, shipper, receiver, or broker?",
