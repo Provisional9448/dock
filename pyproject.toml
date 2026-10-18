@@ -23,6 +23,7 @@ package = false
 
 [tool.uv.workspace]
 members = ["packages/*"]
+exclude = ["packages/dock-landing", "packages/dock-landing-alt"]
 
 [tool.uv.sources]
 dock-events = { workspace = true }

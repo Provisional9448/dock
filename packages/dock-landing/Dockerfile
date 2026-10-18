@@ -3,7 +3,7 @@
 FROM python:3.12-slim
 
 WORKDIR /srv
-COPY index.html styles.css serve.py ./
+COPY index.html styles.css hero.js serve.py ./
 
 ENV PORT=8080
 EXPOSE 8080

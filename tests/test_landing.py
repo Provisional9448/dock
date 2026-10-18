@@ -20,8 +20,11 @@ def test_page_copy() -> None:
     assert "(240) 212-5485" in HTML
     assert "LL-88421" in HTML
     assert "It’s LL-88421, this is Dan at Northwind Orchards." in HTML
-    assert "A role by itself never verifies." in HTML
+    assert "Role alone never verifies." in HTML
     assert "general information only" in HTML
+    assert "Waiting time," in HTML
+    assert 'src="hero.js"' in HTML
+    assert "Try the orb" in HTML
     for phrase in (
         "Northwind Orchards",
         "Dan",
@@ -44,10 +47,20 @@ def test_page_copy() -> None:
 def test_railway_contract() -> None:
     server = (PAGE / "serve.py").read_text()
     docker = (PAGE / "Dockerfile").read_text()
+    css = (PAGE / "styles.css").read_text()
+    hero = (PAGE / "hero.js").read_text()
     assert 'ThreadingHTTPServer(("0.0.0.0", port), Handler)' in server
     assert 'os.environ.get("PORT", "8080")' in server
-    assert "python" in docker and "serve.py" in docker
+    assert "python" in docker and "serve.py" in docker and "hero.js" in docker
     assert "PORT=8080" in docker
+    assert "prefers-reduced-motion" in css
+    assert "unpkg.com/three@" in hero
+    assert "prefers-reduced-motion" in hero
+    click = hero.find('addEventListener("click"')
+    mic = hero.find("getUserMedia")
+    assert 0 <= click < mic
+    assert "createAnalyser" in hero
+    assert "simulated" in hero
 
 
 def test_server_respects_port() -> None:

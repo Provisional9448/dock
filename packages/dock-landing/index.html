@@ -5,85 +5,118 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dock · detention line</title>
   <meta name="description" content="Dock is an automated phone line that tracks driver waiting time and keeps the driver, shipper, consignee, and broker updated.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0d11'/%3E%3Cpath d='M5 22h22M8 22V13h9l3 4h7v5' fill='none' stroke='%23ff5c1c' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;1,9..144,520&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="top">
-    <div>
-      <p class="mark">Dock</p>
-      <p class="kicker">Detention line</p>
-    </div>
+    <a class="mark" href="#top">Dock</a>
     <a class="repo" href="https://github.com/Provisional9448/dock">GitHub</a>
   </header>
 
-  <main>
-    <h1>An automated phone line that tracks driver waiting time and keeps the driver, shipper, consignee, and broker updated.</h1>
+  <main id="top">
+    <section class="hero" aria-label="Call Dock">
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+      <div class="hero-fallback" id="hero-fallback" aria-hidden="true">
+        <div class="orb-fallback">
+          <span class="blob b1"></span>
+          <span class="blob b2"></span>
+          <span class="blob b3"></span>
+          <span class="blob b4"></span>
+          <span class="halo"></span>
+        </div>
+      </div>
+      <div class="scrim" aria-hidden="true"></div>
 
-    <div class="call">
-      <a class="talk" href="tel:+12402125485">Talk to an agent</a>
-      <p class="number"><a href="tel:+12402125485">(240) 212-5485</a></p>
-    </div>
-    <p class="heard">The line answers as Doc, for Red Kettle Freight. Calls may be recorded.</p>
-
-    <section class="verify" aria-labelledby="try-heading">
-      <h2 id="try-heading">Try shipment LL-88421</h2>
-      <p class="lead">Say the load number and one company or name from the load. A role by itself never verifies. If those two do not match, Doc asks once more, then gives general information only.</p>
-      <p class="example">“It’s LL-88421, this is Dan at Northwind Orchards.”</p>
-
-      <ol class="roles">
-        <li>
-          <span class="role">Shipper</span>
-          <span class="who">Northwind Orchards · Dan</span>
-          <span class="gets">Hears free time ends at 4:06, then $75 an hour.</span>
-        </li>
-        <li>
-          <span class="role">Receiver</span>
-          <span class="who">Harbor &amp; Rye · Priya</span>
-          <span class="gets">Hears the status, then is asked for a door and a time.</span>
-        </li>
-        <li>
-          <span class="role">Broker</span>
-          <span class="who">Lantern Lane · Alex</span>
-          <span class="gets">Hears status and cost. The carrier invoices from the timestamps.</span>
-        </li>
-        <li>
-          <span class="role">Driver</span>
-          <span class="who">Red Kettle · Luis</span>
-          <span class="gets">Check-in only. No money.</span>
-        </li>
-      </ol>
+      <div class="hero-copy">
+        <h1>Waiting time,<br><em>on one line.</em></h1>
+        <p class="sub">An automated phone line for the driver, shipper, consignee, and broker.</p>
+        <div class="call">
+          <a class="talk" href="tel:+12402125485">Talk to an agent</a>
+          <a class="number" href="tel:+12402125485">(240) 212-5485</a>
+        </div>
+        <div class="mic-row">
+          <button type="button" class="mic" id="orb-mic" aria-pressed="false">Try the orb</button>
+          <p class="mic-note" id="orb-mic-note"></p>
+        </div>
+        <aside class="try">
+          <p class="try-id">Try <strong>LL-88421</strong></p>
+          <p class="try-line">“It’s LL-88421, this is Dan at Northwind Orchards.”</p>
+          <p class="try-note">Role alone never verifies. Unverified callers get general information only.</p>
+          <ul>
+            <li><b>Dan</b> Northwind Orchards · shipper · 4:06, then $75 an hour</li>
+            <li><b>Priya</b> Harbor &amp; Rye · receiver · status, door and time</li>
+            <li><b>Alex</b> Lantern Lane · broker · status, cost, timestamps</li>
+            <li><b>Luis</b> Red Kettle · driver · check-in, no money</li>
+          </ul>
+        </aside>
+      </div>
     </section>
 
-    <section class="does" aria-labelledby="does-heading">
-      <h2 id="does-heading">What the line does</h2>
-      <ol>
-        <li>
-          <h3>Verifies who’s calling, and which shipment</h3>
-          <p>Load number, plus a company or a name on that load.</p>
+    <section class="band" aria-label="Call flow">
+      <div class="flow">
+        <div class="node" style="--d: 40ms">
+          <span class="node-k">Driver</span>
+          <span class="node-v">Checks in</span>
+        </div>
+        <span class="arrow" style="--d: 120ms" aria-hidden="true"></span>
+        <div class="node doc" style="--d: 180ms">
+          <span class="node-k">Doc</span>
+          <span class="node-v">Keeps the clock</span>
+        </div>
+        <span class="arrow" style="--d: 260ms" aria-hidden="true"></span>
+        <div class="fan" style="--d: 340ms">
+          <div class="node">
+            <span class="node-k">Shipper</span>
+            <span class="node-v">Free time, then rate</span>
+          </div>
+          <div class="node">
+            <span class="node-k">Broker</span>
+            <span class="node-v">Status and cost</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="caps" aria-labelledby="does">
+      <h2 id="does">On the line</h2>
+      <ul class="cards">
+        <li class="card reveal">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16.5 12 23 26 8"/><path d="M5 5h8M5 5v8M27 27h-8M27 27v-8"/></svg>
+          <h3>Verify the caller</h3>
+          <p>Load number and one name.</p>
         </li>
-        <li>
-          <h3>Logs driver check-ins and waits</h3>
-          <p>The check-in time, and what the receiver told the driver.</p>
+        <li class="card reveal">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 7h16v18H8z"/><path d="M12 13h8M12 18h8M12 23h5"/></svg>
+          <h3>Log the wait</h3>
+          <p>Check-in, and the delay.</p>
         </li>
-        <li>
-          <h3>Heads-up to the payer</h3>
-          <p>Shipper or consignee, whoever pays on the load, hears free time and detention. On LL-88421 the shipper pays.</p>
+        <li class="card reveal">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="9"/><path d="M16 11v6l4 2"/></svg>
+          <h3>Warn the payer</h3>
+          <p>Free time, then the rate.</p>
         </li>
-        <li>
-          <h3>Messages the broker</h3>
-          <p>Status, the cost, and that the carrier invoices from the timestamps.</p>
+        <li class="card reveal">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 8h20v12H12l-6 5z"/></svg>
+          <h3>Message the broker</h3>
+          <p>Status, cost, timestamps.</p>
         </li>
-        <li>
-          <h3>Answers basic shipment questions</h3>
-          <p>A verified caller gets that role’s answers. Anyone else gets general information only.</p>
+        <li class="card reveal">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 8h14v10H11L7 22z"/><path d="M15 14h10v8H17"/></svg>
+          <h3>Answer questions</h3>
+          <p>That role, or general info.</p>
         </li>
-      </ol>
+      </ul>
     </section>
   </main>
 
   <footer>
-    <p>Fictional demo. Harbor &amp; Rye, Northwind, Red Kettle, Lantern Lane. No login.</p>
-    <p><a href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a></p>
+    <p>Fictional demo. No login.</p>
+    <a href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a>
   </footer>
+  <script type="module" src="hero.js"></script>
 </body>
 </html>
