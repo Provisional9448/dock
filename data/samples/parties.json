@@ -70,5 +70,9 @@
     "rate_usd_per_hour": "75.00",
     "increment_minutes": 15,
     "stop_on": "unload_started"
-  }
+  },
+  "caller_ids": {
+    "+12053516709": "pty_luis"
+  },
+  "caller_ids_note": "Fictional party phones are the +1555555 numbers above. caller_ids maps a real demo phone (the AgentLine test caller) to a party; set DOCK_CALLER_ROLE=shipper (or consignee/broker) to make that same phone play that role for a take."
 }

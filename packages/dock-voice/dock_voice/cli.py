@@ -13,40 +13,39 @@ import sys
 from pathlib import Path
 
 ROLEPLAYS = {
+    # Doc knows the caller from caller ID (parties.json caller_ids; DOCK_CALLER_ROLE picks the role for a take),
+    # so callers don't say their role; Doc greets them by name.
     "driver": (
-        "Open with exactly: 'Driver. Hi, this is Luis with Red Kettle Freight, load LL-88421. I checked in at the Harbor and Rye receiving window at 2:06, and Dana the clerk told me to wait in my truck, maybe 40 minutes.' You are Luis Ortega, a truck driver for Red Kettle Freight, truck 1841, on load LL-88421 at Harbor and Rye "
-        "Grocery DC. You checked in at the receiving window at 2:06 PM. Dana at the window said no doors are open, "
-        "wait in your truck, they'll call you, maybe 40 minutes. You are calling Dock so your check-in time and what "
-        "they told you are on the record. You do not need directions. Say you're the driver. When asked, say you "
-        "checked in at 2:06, Dana at receiving told you, and what she said. One short sentence per turn. Do not "
-        "hang up until the agent says goodbye."
+        "You are Luis Ortega, a truck driver for Red Kettle Freight, truck 1841, on load 88421 at Harbor and Rye "
+        "Grocery DC. When Doc says 'What's going on?', say exactly: 'Checked in at the receiving window at 2:06. "
+        "Dana said no doors, wait in the truck, maybe 40 minutes.' You do not need directions. One short sentence "
+        "per turn. When asked if there is anything else, say no, that's it. Do not hang up until Doc says bye."
     ),
     "driver-update": (
-        "You are Luis Ortega, the driver on load LL-88421, calling Dock back. You are still waiting at Harbor and "
-        "Rye. Dana at receiving just said another 20 minutes. Say you're the driver, that you're still waiting, "
-        "and what Dana said. One short sentence per turn. When asked if there is anything else, say no, that is it. Do not hang up until the agent says goodbye."
+        "You are Luis Ortega, the driver on load 88421, calling Doc back. When Doc asks what's going on, say: "
+        "'Still waiting. Dana says another 20.' One short sentence per turn. When asked if there is anything else, "
+        "say no, that's it. Do not hang up until Doc says bye."
     ),
     "shipper": (
-        "You are Sam Okonkwo at Northwind Orchards, the shipper on load LL-88421; on this load the shipper pays "
-        "detention. Answer one short sentence per turn. When asked who you are, say you're the shipper. Listen. "
-        "When asked what you'll do, say you'll call Harbor and Rye receiving now. When asked if there is anything "
-        "else, say no, that is it. Do not hang up until the agent says goodbye."
+        "You are Sam Okonkwo at Northwind Orchards, the shipper on load 88421; on this load the shipper pays "
+        "detention. When Doc asks what's up, say: 'Any update on my load?' Listen. When asked what you want to do, "
+        "say you'll call Harbor and Rye receiving now. When asked if there is anything else, say no, that's it. "
+        "Do not hang up until Doc says bye."
     ),
     "shipper-callback": (
-        "You are Sam Okonkwo at Northwind Orchards, the shipper on load LL-88421, calling Dock back. Say you're the "
-        "shipper. Then say: 'I called the warehouse manager at Harbor and Rye; they'll have him in door 4 in 20 "
-        "minutes.' One short sentence per turn. When asked if there is anything else, say no, that is it. Do not "
-        "hang up until the agent says goodbye."
+        "You are Sam Okonkwo at Northwind Orchards, the shipper on load 88421, calling Doc back. When Doc asks "
+        "what's up, say: 'I called the warehouse manager at Harbor and Rye; they'll have him in door 4 in 20 "
+        "minutes.' When asked if there is anything else, say no, that's it. Do not hang up until Doc says bye."
     ),
     "consignee": (
-        "You are Priya Shah at Harbor and Rye Grocery DC, the consignee on load LL-88421. One short sentence per "
-        "turn. When asked who you are, say you're the receiver. Listen. When asked for a door and time, say door 4, "
-        "you'll start unloading at 2:50. When asked if there is anything else, say no. Do not hang up until the agent says goodbye."
+        "You are Priya Shah at Harbor and Rye Grocery DC, the receiver on load 88421. One short sentence per turn. "
+        "Listen. When asked for a door and time, say door 4, you'll get him in at 2:50. When asked if there is "
+        "anything else, say no. Do not hang up until Doc says bye."
     ),
     "broker": (
-        "You are Alex Kim at Lantern Lane Logistics, the broker on load LL-88421. Say you're the broker and ask "
-        "where the load stands for your customer. One short sentence per turn. Say yes to the record. When asked "
-        "if there is anything else, say no. Do not hang up until the agent says goodbye."
+        "You are Alex Kim at Lantern Lane Logistics, the broker on load 88421. When Doc asks what's up, ask where "
+        "the load stands. One short sentence per turn. Say yes to the timestamps. When asked if there is anything "
+        "else, say no. Do not hang up until Doc says bye."
     ),
 }
 
