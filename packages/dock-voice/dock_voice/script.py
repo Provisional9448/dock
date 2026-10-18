@@ -250,6 +250,8 @@ def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
     at = hm(r.get("at_local") or snap["clock_local"])
     said_by = _who_said(r.get("said_by"))
     said = (r.get("said") or "").strip().rstrip(".")
+    said = re.sub(r"^(?:(?:the\s+)?[\w']+\s+(?:at\s+\w+\s+)?)?(?:said|says|told me)[:,]?\s+", "", said, flags=re.I) if re.match(
+        r"^(?:(?:the\s+)?[\w']+\s+(?:at\s+\w+\s+)?)?(?:said|says|told me)\b", said, re.I) else said
     if said:
         told = f" and {said_by} said {said}"
     elif r.get("estimate_minutes"):
@@ -408,9 +410,8 @@ def driver_reply(snap: dict, status: str, record: dict | None = None) -> str:
 
 
 GENERAL_INFO = (
-    "I can only share load details with someone on the load. In general: Doc keeps the detention clock for Red Kettle "
-    "Freight. Drivers call in their check-in and what the receiver tells them, and whoever pays detention gets a "
-    "heads-up before free time runs out."
+    "I can only share load details with someone on the load. In general, Doc tracks the wait at the dock for Red "
+    "Kettle Freight and warns whoever pays before detention starts."
 )
 
 
@@ -450,15 +451,89 @@ def verified_line(party: dict) -> str:
     return f"Thanks, {first}. I've got you as the {label} on {LOAD_SPOKEN}. {_opening_ask(party['role'])}".strip()
 
 
-def answer_for(snap: dict, question: str, role: str | None, verified: bool = True) -> str:
-    """on_question by who's asking: unverified -> general only; driver and the non-paying party -> status, no money."""
-    if not verified:
+_REPEAT = re.compile(r"^\s*(what|huh|sorry|pardon|come again|say (that|it) again|repeat( that)?|again)\W*$", re.I)
+
+
+def _intent(q: str) -> str:
+    low = " " + " ".join(str(q or "").lower().split()) + " "
+    if _REPEAT.match(q or "") or any(w in low for w in (" repeat", " say that again", " didn't catch", " didnt catch", " one more time")):
+        return "repeat"
+    if any(w in low for w in (" who are you", " what are you", " are you a bot", " are you real", " are you ai", " who is this", " what is doc", " what's doc")):
+        return "who"
+    if any(w in low for w in (" owe", " cost", " charge", " detention", " how much", " bill", " pay", " money", " dollars", " fee")):
+        return "money"
+    if any(w in low for w in (" rate", " per hour", " an hour")):
+        return "rate"
+    if any(w in low for w in (" free time", " how long do", " time left", " deadline", " cutoff")):
+        return "free"
+    if any(w in low for w in (" eta", " door", " unload", " when ", " how long", " start", " get in", " wait")):
+        return "eta"
+    if any(w in low for w in (" status", " update", " where", " what's going", " whats going", " load", " truck", " driver", " luis", " shipment", " happening", " checked in")):
+        return "status"
+    return "off"
+
+
+def _eta_line(snap: dict) -> str:
+    s, d = snap["summary"], _driver_report(snap)
+    if not d["checked_in"]:
+        return "Luis hasn't checked in yet, so no door or time yet."
+    if s["phase"] == "closed":
+        return "They've started unloading him."
+    if d["eta"]:
+        return f"No door yet. Receiving said around {hm(d['eta'])}."
+    told = _told(d).lstrip("; ")
+    return f"No door yet{'; ' + told if told else ''}."
+
+
+def _money_short(snap: dict) -> str:
+    s = snap["summary"]
+    per_hour = str(snap["policy"]["rate_usd_per_hour"]).removesuffix(".00")
+    if s["phase"] == "not_started":
+        return "Nothing. The clock hasn't started; Luis hasn't checked in."
+    if s["phase"] in ("running", "warning"):
+        return f"Nothing yet. Free time ends at {hm(s['free_time_ends_local'])}; after that it's ${per_hour} an hour."
+    if s["phase"] == "accruing":
+        return f"About ${s['estimated_charge_usd']} so far, ${per_hour} an hour since {hm(s['free_time_ends_local'])}."
+    return f"About ${s['estimated_charge_usd']}; the clock stopped when they started unloading."
+
+
+def answer_for(snap: dict, question: str, role: str | None, verified: bool = True, gave_up: bool = False) -> str:
+    """on_question by who's asking and what they asked. One or two short sentences.
+    Unverified -> general only; driver and the non-paying party never hear money."""
+    intent = _intent(question)
+    if intent == "who":
+        return spoken(f"I'm Doc, Red Kettle's automated line. I keep track of the wait and detention on load {LOAD_SPOKEN}.")
+    if not verified and gave_up:
         return GENERAL_INFO
-    if role in ("driver",) or (role in ("shipper", "consignee") and role != payer_role(snap)):
-        s = snap["summary"]
-        door = " They're unloading him now." if s["phase"] == "closed" else ""
-        return spoken(_status(snap) + door)
-    return answer_question(snap, question)
+    if not verified:
+        if intent == "repeat":
+            return "Sure. What's the load number, and who are you with?"
+        return "I can only share load details with someone on the load. What's the load number, and who are you with?"
+    s, d = snap["summary"], _driver_report(snap)
+    no_money = role == "driver" or (role in ("shipper", "consignee") and role != payer_role(snap))
+    if role == "driver":
+        if intent in ("money", "rate", "free"):
+            return "That's between Red Kettle and the customer; you're covered for the wait. I just need your times."
+        if intent == "off":
+            return "I can only help with this load. What's going on there?"
+        if d["checked_in"]:
+            return spoken(f"I have you checked in at {hm(d['checked_in'])}. Give me a call when they start unloading.")
+        return "I don't have your check-in yet. What time did you check in?"
+    if intent == "off":
+        return spoken(f"Sorry, I can only help with load {LOAD_SPOKEN}: the wait, free time, and detention.")
+    if intent in ("money", "rate", "free"):
+        if no_money:
+            payer = payer_role(snap)
+            return spoken(f"Detention on this load is between Red Kettle and the {payer}. " + _eta_line(snap))
+        if intent == "rate":
+            per_hour = str(snap["policy"]["rate_usd_per_hour"]).removesuffix(".00")
+            return f"${per_hour} an hour after {snap['policy']['free_minutes'] // 60} hours of free time."
+        if intent == "free" and s["phase"] in ("running", "warning"):
+            return spoken(f"Free time ends at {hm(s['free_time_ends_local'])}, about {span_words(s['remaining_free_minutes'])} from now.")
+        return spoken(_money_short(snap))
+    if intent == "eta":
+        return spoken(_eta_line(snap))
+    return spoken(_status(snap, zone=role == "broker"))
 
 
 def answer_question(snap: dict, question: str) -> str:

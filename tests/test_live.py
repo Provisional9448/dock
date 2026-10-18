@@ -113,7 +113,7 @@ def test_agent_handlers_with_mockcall(run):
     except Exception as exc:  # the SDK wants Guava credentials even to build an agent
         pytest.skip(f"no Guava credentials: {exc}")
     answer = agent._on_question(MockCall(), "any update?")
-    assert "hasn't checked in" in answer and "no detention clock" in answer
+    assert "hasn't checked in" in answer
 
     run.set_now(parse_time("2026-10-17T18:05:30Z"))  # caller is a minute ahead of the demo clock
     driver = MockCall()
@@ -140,7 +140,7 @@ def test_agent_handlers_with_mockcall(run):
     assert "hang up" in driver._command_queue[-1].instruction
 
     LiveDesk(run).jump_preset("warning")
-    assert "Nothing owed yet" in agent._on_question(MockCall(), "please confirm the detention amount")
+    assert "Nothing yet" in agent._on_question(MockCall(), "please confirm the detention amount")
     shipper = MockCall()
     shipper.set_field("role", "shipper")
     agent._on_task_complete_handlers["who"](shipper)
@@ -590,7 +590,8 @@ def test_unknown_caller_verifies_with_load_number_and_company(run):
     assert verified_line(verify_caller(ctx, "88421", "Lantern Lane")) == "Thanks, Alex. I've got you as the broker on 8 8 4 2 1."
 
     snap = _checked_in(run)
-    assert answer_for(snap, "how much so far?", None, verified=False) == GENERAL_INFO
+    assert answer_for(snap, "how much so far?", None, verified=False).endswith("What's the load number, and who are you with?")
+    assert answer_for(snap, "how much so far?", None, verified=False, gave_up=True) == GENERAL_INFO
     assert "$" not in answer_for(snap, "how much so far?", "driver") and "2:06" in answer_for(snap, "status?", "driver")
     assert "$" not in answer_for(snap, "how much?", "consignee")           # shipper pays on this load
     assert "$75" in answer_for(snap, "how much?", "shipper") and "$75" in answer_for(snap, "how much?", "broker")
@@ -626,3 +627,53 @@ def test_unknown_caller_flow_verified_then_general_after_two_misses(run):
         agent._on_task_complete_handlers["verify"](call)
     said = " ".join(repr(c) for c in call._command_queue)
     assert "couldn't match that" in said and "can't match that to a load" in said and "wrapup" in said
+
+
+def test_freeze_sim_paths_short_role_right_answers(run):
+    """8:02 PM sim pass: every question got the same long paragraph; drivers heard about themselves in the third
+    person; 'clerk said clerk said'; load-number-only counted as a failed try; broker 'yes' got no answer."""
+    from dock_voice.script import answer_for, driver_readback
+
+    snap = _checked_in(run)
+    run.set_now(parse_time("2026-10-17T18:30:00Z"))
+    snap = LiveDesk(run).snapshot()
+    assert answer_for(snap, "how much do I owe?", "shipper") == "Nothing yet. Free time ends at 4:06; after that it's $75 an hour."
+    assert answer_for(snap, "how much detention am I getting?", "driver").startswith("That's between Red Kettle and the customer")
+    assert answer_for(snap, "any update?", "driver") == "I have you checked in at 2:06. Give me a call when they start unloading."
+    assert answer_for(snap, "how much is detention?", "consignee").startswith("Detention on this load is between Red Kettle and the shipper.")
+    assert answer_for(snap, "what's the ETA?", "broker") == "No door yet. Receiving said around 2:46."
+    assert answer_for(snap, "what's the weather?", "shipper").startswith("Sorry, I can only help with load")
+    assert answer_for(snap, "who are you?", "shipper").startswith("I'm Doc, Red Kettle's automated line.")
+    assert answer_for(snap, "what?", "shipper").startswith("Luis is waiting for a door")
+    for q in ("how much do I owe?", "what's the ETA?", "what?", "rate?"):
+        assert len(answer_for(snap, q, "shipper")) < 140, q
+    text = driver_readback(snap, "arrived", {"at_local": "2:06 PM ET", "said_by": "clerk", "said": "clerk said about 40 minutes"})
+    assert "the clerk said about 40 minutes" in text and "said clerk said" not in text
+    text = driver_readback(snap, "waiting", {"at_local": "2:30 PM ET", "said": "they said another 20"})
+    assert "they said another 20" in text and "said they said" not in text
+
+
+def test_freeze_sim_load_only_and_broker_yes(run):
+    from guava.testing import MockCall
+    from guava.types.call_info import PSTNCallInfo
+
+    from dock_voice.agent import build_agent
+
+    _checked_in(run)
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    call = MockCall(call_info=PSTNCallInfo(from_number="+14155550000", to_number="+12402125485"))
+    agent._on_call_start(call)
+    call.set_field("load", "LL-88421")
+    call.set_field("who", "")
+    agent._on_task_complete_handlers["verify"](call)
+    said = " ".join(repr(c) for c in call._command_queue)
+    assert "Thanks. And who are you with?" in said and "couldn't match" not in said
+    call.set_field("who", "Alex at Lantern Lane")
+    agent._on_task_complete_handlers["verify"](call)
+    call.set_field("anything_else", "yes please")
+    agent._on_task_complete_handlers["broker"](call)
+    said = " ".join(repr(c) for c in call._command_queue)
+    assert "Okay, I'll send them over. Thanks Alex. Bye." in said

@@ -198,6 +198,11 @@ def build_agent(run: LiveRun):
     @agent.on_task_complete("verify")
     def on_verify(call: guava.Call) -> None:
         party = verify_caller(run.context, call.get_field("load"), call.get_field("who"), call.get_field("role"))
+        if not party and not str(call.get_field("who") or "").strip() and not call.get_variable("asked_who", False):
+            call.set_variable("asked_who", True)
+            call.read_script("Thanks. And who are you with?")
+            ask_verify(call)
+            return
         tries = int(call.get_variable("verify_tries", 0) or 0) + 1
         call.set_variable("verify_tries", tries)
         log.info("verify try %s: load=%r who=%r role=%r -> %s", tries, call.get_field("load"), call.get_field("who"),
@@ -220,14 +225,15 @@ def build_agent(run: LiveRun):
         get = getattr(call, "get_variable", None)
         role = get("role", None) if get else None
         unverified = bool(get("unverified", False)) if get else False
-        return answer_for(desk.snapshot(), question, role, verified=not unverified)
+        gave_up = int((get("verify_tries", 0) if get else 0) or 0) >= 2
+        return answer_for(desk.snapshot(), question, role, verified=not unverified, gave_up=gave_up)
 
-    def close_call(call: guava.Call, role: str) -> None:
+    def close_call(call: guava.Call, role: str, before: str = "") -> None:
         """One closing line, then hang up. The SDK has no hard hangup, so the final instruction allows nothing
         else; the wrapup task also tells the model not to thank or say goodbye on its own."""
         call.set_variable("closed", True)
         call.hangup(
-            f"Your only remaining words are exactly: '{goodbye_line(role)}' Then hang up immediately. "
+            f"Your only remaining words are exactly: '{(before + ' ' if before else '') + goodbye_line(role)}' Then hang up immediately. "
             "Do not add thanks, 'have a safe trip', or a second goodbye."
         )
 
@@ -476,6 +482,8 @@ def build_agent(run: LiveRun):
 
     @agent.on_task_complete("broker")
     def on_broker(call: guava.Call) -> None:
-        close_call(call, "broker")
+        answer = str(call.get_field("anything_else") or "").lower()
+        yes = any(w in answer for w in ("yes", "yeah", "sure", "please", "send", "yep", "ok"))
+        close_call(call, "broker", "Okay, I'll send them over." if yes else "")
 
     return agent
