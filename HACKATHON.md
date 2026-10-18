@@ -34,8 +34,8 @@
 ## Live status (updated 5:48 PM PT)
 - Pitch: shipper, consignee, broker, carrier all on the same page.
 - Box build (in progress): Guava inbound voice agent (`packages/dock-voice`) handling track/status/driver-report/doc requests from any party; live web views; replay mode; `docs/DEMO-SCRIPT.md`.
-- PR #1 `dock-notify` heads-up SMS + voice script: in review.
-- PR #2 `dock-clock` scenario tests + timezone fix: in review.
+- Merged: PR #1 `dock-notify` heads-up SMS + voice script.
+- Merged: PR #2 `dock-clock` scenario tests + timezone fix.
 - Cloud agent: `packages/dock-track` tracking-request intake (PR coming).
 - Cloud agent: `data/samples/board/` 8-load dispatcher fixtures (PR coming).
 - Done: fictional docs in `data/samples/docs/`; fictional tracking requests + partner threads in `data/samples/conversations/`; cleaned mocks incl. dispatcher board in `site/`.
