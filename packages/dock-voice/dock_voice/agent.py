@@ -19,7 +19,11 @@ from dock_web.live import LiveDesk, LiveRun
 from dock_voice.record import promise_events, receiver_promise, log_receiver, build_driver_events, local_snapshot, post_later, queue_notices
 from dock_voice.script import (
     DRIVER_STATUS,
+    GENERAL_INFO,
+    answer_for,
     answer_question,
+    verified_line,
+    verify_caller,
     driver_readback,
     parse_clock,
     parse_minutes,
@@ -158,27 +162,65 @@ def build_agent(run: LiveRun):
             start_role(call, party["role"])
             return
         call.read_script(DISCLOSURE)
+        ask_verify(call)
+
+    def ask_verify(call: guava.Call) -> None:
+        call.set_variable("unverified", True)
         call.set_task(
-            "who",
-            objective="Find out who's calling about 88421. Don't ask again if they already said.",
+            "verify",
+            objective=(
+                "Unknown number. Before sharing anything about a load, get the load or shipment number and the "
+                "caller's company or name. Fill fields from what they already said; ask only for what's missing. "
+                "Don't give load details yet." + STYLE + PATIENCE
+            ),
             checklist=[
                 guava.Field(
+                    key="load",
+                    field_type="text",
+                    description="Load or shipment number as heard, e.g. 'LL-88421' or 'L L 8 8 4 2 1'. Digits matter.",
+                    question="What's the load number?",
+                ),
+                guava.Field(
+                    key="who",
+                    field_type="text",
+                    description="Their company and/or their name, as said (e.g. 'Dan at Northwind Orchards').",
+                    question="And who are you with?",
+                ),
+                guava.Field(
                     key="role",
-                    field_type="multiple_choice",
-                    choices=["driver", "shipper", "consignee", "broker"],
-                    description=(
-                        "If the caller already said who they are (for example 'Driver. Hi, this is Luis', or a name: "
-                        "Luis is the driver, Dan the shipper, Priya the consignee, Alex the broker), fill this in "
-                        "without asking."
-                    ),
-                    question="Are you the driver, shipper, receiver, or broker?",
-                )
+                    field_type="text",
+                    description="Their role on the load if they said it (driver, shipper, receiver, broker). Don't ask.",
+                    required=False,
+                ),
             ],
         )
 
+    @agent.on_task_complete("verify")
+    def on_verify(call: guava.Call) -> None:
+        party = verify_caller(run.context, call.get_field("load"), call.get_field("who"), call.get_field("role"))
+        tries = int(call.get_variable("verify_tries", 0) or 0) + 1
+        call.set_variable("verify_tries", tries)
+        log.info("verify try %s: load=%r who=%r role=%r -> %s", tries, call.get_field("load"), call.get_field("who"),
+                 call.get_field("role"), party["party_id"] if party else "no match")
+        if party:
+            call.set_variable("unverified", False)
+            call.set_variable("role", party["role"])
+            call.read_script(verified_line(party))
+            start_role(call, party["role"])
+            return
+        if tries < 2:
+            call.read_script("Sorry, I couldn't match that. Can you give me the load number and your company again?")
+            ask_verify(call)
+            return
+        call.set_variable("role", "caller")
+        wrap_up(call, "Sorry, I can't match that to a load I'm tracking. " + GENERAL_INFO + " Anything else?")
+
     @agent.on_question
     def on_question(call: guava.Call, question: str) -> str:
-        return answer_question(desk.snapshot(), question)
+        get = getattr(call, "get_variable", None)
+        role = get("role", None) if get else None
+        unverified = bool(get("unverified", False)) if get else False
+        return answer_for(desk.snapshot(), question, role, verified=not unverified)
 
     def close_call(call: guava.Call, role: str) -> None:
         """One closing line, then hang up. The SDK has no hard hangup, so the final instruction allows nothing

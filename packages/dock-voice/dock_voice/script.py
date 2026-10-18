@@ -106,12 +106,17 @@ def caller_party(context: dict, number: object, env: dict | None = None) -> dict
     return party
 
 
+def _opening_ask(role: str) -> str:
+    """Driver and shipper talk first; receiver and broker hear the update right away, so no question here."""
+    return {"driver": "How's it going there?", "shipper": "What can I do for you?"}.get(role, "")
+
+
 def greeting(role: str | None) -> str:
     """First thing the line says. Known caller: by name, like a dispatcher picking up. Unknown: who's this?"""
     if role in NAMES:
-        ask = "How's it going there?" if role == "driver" else "What can I do for you?"
-        return f"Hi {NAMES[role]}, it's Doc, Red Kettle's automated line, on load {LOAD_SPOKEN}. Calls are recorded. {ask}"
-    return f"Hi, this is Doc, Red Kettle's automated line for load {LOAD_SPOKEN}. Calls are recorded. Who am I speaking with?"
+        ask = _opening_ask(role)
+        return f"Hi {NAMES[role]}, it's Doc, Red Kettle's automated line, on load {LOAD_SPOKEN}. Calls are recorded. {ask}".strip()
+    return "Hi, this is Doc, Red Kettle's automated line. Calls are recorded. What's the load number, and who are you with?"
 
 
 def span_words(minutes: int | None) -> str:
@@ -400,6 +405,60 @@ def goodbye_line(role: str) -> str:
 def driver_reply(snap: dict, status: str, record: dict | None = None) -> str:
     """Back-compat: final instruction wrapping the read-back."""
     return f"Say exactly: '{driver_readback(snap, status, record)}' Do not give directions."
+
+
+GENERAL_INFO = (
+    "I can only share load details with someone on the load. In general: Doc keeps the detention clock for Red Kettle "
+    "Freight. Drivers call in their check-in and what the receiver tells them, and whoever pays detention gets a "
+    "heads-up before free time runs out."
+)
+
+
+def verify_caller(context: dict, load_said: object, who_said: object, role_said: object = None) -> dict | None:
+    """Unknown number: the load number plus a company or contact name on that load -> that party.
+    'LL-88421' / 'L L 8 8 4 2 1' / '88421' and 'Northwind' / 'Dan' / 'Lantern Lane' ... Role only breaks ties or
+    vetoes a mismatch; it never verifies on its own. None if it doesn't check out."""
+    load_digits = re.sub(r"\D", "", context["load"]["load_id"])
+    said_digits = re.sub(r"\D", "", str(load_said or ""))
+    if not load_digits or load_digits not in said_digits:
+        return None
+    text = " " + re.sub(r"[^a-z ]", " ", str(who_said or "").lower().replace("&", " and ")) + " "
+    generic = {"grocery", "dc", "logistics", "freight", "orchards", "the", "and", "on", "road", "dispatch", "inc", "llc"}
+    hits = []
+    for party in context.get("parties", []):
+        words = {w for w in re.findall(r"[a-z]+", (party.get("name", "") + " " + party.get("contact", "")).lower())
+                 if w not in generic and len(w) > 2}
+        if any(f" {w} " in text for w in words):
+            role = "driver" if party["role"] == "carrier" else party["role"]
+            if role in ROLES:
+                hits.append(dict(party, role=role) if party["role"] == "carrier" else party)
+    if role_said:
+        want = pick_role(role_said) if str(role_said).strip() else None
+        if want:
+            hits = [p for p in hits if p["role"] == want]
+    roles = {p["role"] for p in hits}
+    if len(roles) != 1:
+        return None
+    by_role = {p["role"]: p for p in context.get("parties", [])}
+    role = roles.pop()
+    return by_role.get(role, hits[0])
+
+
+def verified_line(party: dict) -> str:
+    first = NAMES.get(party["role"]) or party.get("contact", "").split(" ")[0]
+    label = {"consignee": "receiver"}.get(party["role"], party["role"])
+    return f"Thanks, {first}. I've got you as the {label} on {LOAD_SPOKEN}. {_opening_ask(party['role'])}".strip()
+
+
+def answer_for(snap: dict, question: str, role: str | None, verified: bool = True) -> str:
+    """on_question by who's asking: unverified -> general only; driver and the non-paying party -> status, no money."""
+    if not verified:
+        return GENERAL_INFO
+    if role in ("driver",) or (role in ("shipper", "consignee") and role != payer_role(snap)):
+        s = snap["summary"]
+        door = " They're unloading him now." if s["phase"] == "closed" else ""
+        return spoken(_status(snap) + door)
+    return answer_question(snap, question)
 
 
 def answer_question(snap: dict, question: str) -> str:

@@ -501,7 +501,7 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     assert caller_party(ctx, "+15555550151", env={})["role"] == "driver"  # carrier dispatch -> driver path
     assert caller_party(ctx, "+14155550000", env={}) is None and caller_party(ctx, None, env={}) is None
     assert greeting("driver").startswith("Hi Luis, it's Doc") and "automated" in greeting("driver") and "recorded" in greeting("driver")
-    assert greeting(None).endswith("Who am I speaking with?")
+    assert greeting(None).endswith("What's the load number, and who are you with?")
 
     from guava.testing import MockCall
     from guava.types.call_info import PSTNCallInfo
@@ -516,7 +516,7 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     call = MockCall(call_info=PSTNCallInfo(from_number="+12053516709", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Hi Luis, it's Doc" in said and "driver_report" in said and "Who am I speaking" not in said
+    assert "Hi Luis, it's Doc" in said and "driver_report" in said and "load number" not in said
 
     monkeypatch.setenv("DOCK_CALLER_ROLE", "shipper")
     call = MockCall(call_info=PSTNCallInfo(from_number="+12053516709", to_number="+12402125485"))
@@ -527,7 +527,7 @@ def test_caller_id_known_numbers_skip_the_role_question(run, monkeypatch):
     call = MockCall(call_info=PSTNCallInfo(from_number="+14155550000", to_number="+12402125485"))
     agent._on_call_start(call)
     said = " ".join(repr(c) for c in call._command_queue)
-    assert "Who am I speaking with?" in said and "'who'" in said
+    assert "What's the load number" in said and "'verify'" in said
 
 
 def test_lines_sound_like_a_dispatcher(run):
@@ -570,3 +570,59 @@ def test_take5_single_confirm_clerk_and_times(run):
     agent._on_task_complete_handlers["who"](call)
     task = " ".join(repr(c) for c in call._command_queue)
     assert "Do not confirm, repeat, summarize, or thank him" in task
+
+
+def test_unknown_caller_verifies_with_load_number_and_company(run):
+    """Landing page (7:28 PM): judges call from unknown numbers. Load number + company or name -> that party."""
+    from dock_voice.script import GENERAL_INFO, answer_for, verify_caller, verified_line
+
+    ctx = run.context
+    assert verify_caller(ctx, "LL-88421", "Dan at Northwind Orchards")["role"] == "shipper"
+    assert verify_caller(ctx, "L L 8 8 4 2 1", "Harbor and Rye", "receiver")["role"] == "consignee"
+    assert verify_caller(ctx, "88421", "Lantern Lane Logistics")["role"] == "broker"
+    assert verify_caller(ctx, "LL 88421", "Red Kettle Freight, I'm the driver", "driver")["role"] == "driver"
+    assert verify_caller(ctx, "88421", "Luis Ortega")["role"] == "driver"
+    assert verify_caller(ctx, "LL-88422", "Northwind Orchards") is None          # wrong load
+    assert verify_caller(ctx, "LL-88421", "Acme Shipping", "shipper") is None     # role alone never verifies
+    assert verify_caller(ctx, "LL-88421", "Northwind", "broker") is None          # role contradicts company
+    assert verified_line(verify_caller(ctx, "88421", "Northwind")) == (
+        "Thanks, Dan. I've got you as the shipper on 8 8 4 2 1. What can I do for you?")
+    assert verified_line(verify_caller(ctx, "88421", "Lantern Lane")) == "Thanks, Alex. I've got you as the broker on 8 8 4 2 1."
+
+    snap = _checked_in(run)
+    assert answer_for(snap, "how much so far?", None, verified=False) == GENERAL_INFO
+    assert "$" not in answer_for(snap, "how much so far?", "driver") and "2:06" in answer_for(snap, "status?", "driver")
+    assert "$" not in answer_for(snap, "how much?", "consignee")           # shipper pays on this load
+    assert "$75" in answer_for(snap, "how much?", "shipper") and "$75" in answer_for(snap, "how much?", "broker")
+
+
+def test_unknown_caller_flow_verified_then_general_after_two_misses(run):
+    from guava.testing import MockCall
+    from guava.types.call_info import PSTNCallInfo
+
+    from dock_voice.agent import build_agent
+
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    judge = PSTNCallInfo(from_number="+14155550000", to_number="+12402125485")
+    call = MockCall(call_info=judge)
+    agent._on_call_start(call)
+    assert call.get_variable("unverified") is True
+    assert "General" not in agent._on_question(call, "how much is detention so far?") and "$" not in agent._on_question(call, "how much?")
+    call.set_field("load", "LL-88421")
+    call.set_field("who", "Dan, Northwind Orchards")
+    agent._on_task_complete_handlers["verify"](call)
+    said = " ".join(repr(c) for c in call._command_queue)
+    assert "I've got you as the shipper" in said and "shipper_open" in said
+    assert call.get_variable("role") == "shipper" and call.get_variable("unverified") is False
+
+    call = MockCall(call_info=judge)
+    agent._on_call_start(call)
+    for _ in range(2):
+        call.set_field("load", "12345")
+        call.set_field("who", "Acme")
+        agent._on_task_complete_handlers["verify"](call)
+    said = " ".join(repr(c) for c in call._command_queue)
+    assert "couldn't match that" in said and "can't match that to a load" in said and "wrapup" in said
