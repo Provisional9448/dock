@@ -155,8 +155,8 @@ LOADS: list[dict] = [
         "update": {
             "at": "2026-10-17T18:08:00Z",  # 2:08 PM ET
             "channel": "sms",
-            "reason": "door_occupied",
-            "detail": "Still waiting. Door is occupied.",
+            "reason": "no_door_available",
+            "detail": "Checked in 2:06. No doors, told to wait in truck, maybe 40 min.",
         },
         "notices": [
             {

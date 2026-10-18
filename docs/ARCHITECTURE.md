@@ -114,8 +114,8 @@ A short fact, from the sample:
   "load_id": "LL-88421",
   "actor": {"role": "driver", "party_id": "pty_luis", "channel": "voice"},
   "payload": {
-    "reason": "door_occupied",
-    "detail": "Door 4 is occupied. They are not ready to unload."
+    "reason": "no_door_available",
+    "detail": "Checked in at the receiving window at 2:06 PM ET. Dana at receiving said: no doors open, wait in your truck, we'll call you, maybe 40 minutes. Receiver estimate about 40 min, around 2:46 PM ET."
   },
   "caused_by": null,
   "source": "sample"

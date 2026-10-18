@@ -47,8 +47,8 @@ def _arrive(
 
 def _delay(load_id: str, occurred_at: str, event_id: str, **extra) -> Event:
     payload = {
-        "reason": "door_occupied",
-        "detail": "Door 4 is occupied. They are not ready to unload.",
+        "reason": "no_door_available",
+        "detail": "Checked in at the receiving window. Receiver said no doors open, wait in the truck, maybe 40 minutes.",
     }
     payload.update(extra)
     return Event(

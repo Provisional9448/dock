@@ -80,7 +80,7 @@ EXPECTED = [
         "charge": "0.00",
         "remaining": 16,
         "free_local": "4:06 PM ET",
-        "quote": "Still waiting. Door is occupied.",
+        "quote": "Checked in 2:06. No doors, told to wait in truck, maybe 40 min.",
         "channel": "sms",
         "update_at": "2026-10-17T18:08:00Z",
     },

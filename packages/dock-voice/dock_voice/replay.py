@@ -16,6 +16,8 @@ from datetime import timedelta
 from dock_events.timeutil import parse_time
 from dock_web.live import LiveDesk, LiveRun
 
+from dock_voice.record import log_driver
+
 
 def _status(desk: LiveDesk) -> str:
     snap = desk.snapshot()
@@ -32,9 +34,16 @@ def replay(run: LiveRun, pause: float = 4.0, say=print) -> None:
         time.sleep(pause)
 
     beat("New run. Waiting for the driver.")
-    run.set_now(parse_time("2026-10-17T18:06:00Z"))
-    run.driver_status("arrived", detail="Door 4 is occupied. They are not ready to unload.", channel="voice")
-    beat("Driver call: Luis checked in at door 4; door occupied. Clock started.")
+    run.set_now(parse_time("2026-10-17T18:08:00Z"))
+    log_driver(
+        run,
+        "arrived",
+        at=parse_time("2026-10-17T18:06:00Z"),
+        said_by="Dana at the receiving window",
+        said="No doors open, wait in your truck, we'll call you, maybe 40 minutes",
+        estimate_minutes=40,
+    )
+    beat("Driver call: Luis checked in at receiving at 2:06; told to wait about 40 min. On the record. Clock started.")
     desk.jump_preset("warning")
     beat("30 minutes of free time left. dock-notify composed the heads-ups.")
     snap = desk.snapshot()

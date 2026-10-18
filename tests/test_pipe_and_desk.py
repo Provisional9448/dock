@@ -60,7 +60,7 @@ def test_desk_presets_and_driver_sms(root):
     assert closed["summary"]["estimated_charge_usd"] == "56.25"
     assert "$56.25" in closed["proof_markdown"]
     desk.reset()
-    desk.report_driver("Still waiting. Door is occupied.")
+    desk.report_driver("Still waiting. They said another 20.")
     reported = desk.snapshot()
     assert any(row["event"]["type"] == "delay_reported" and row["event"]["source"] == "dock-intake" for row in reported["events"])
 

@@ -51,8 +51,8 @@ def facts(context: dict) -> list[Event]:
             load_id=load_id,
             actor=driver,
             payload={
-                "reason": "door_occupied",
-                "detail": "Door 4 is occupied. They are not ready to unload.",
+                "reason": "no_door_available",
+                "detail": "Checked in at the receiving window at 2:06 PM ET. Dana at receiving said: no doors open, wait in your truck, we'll call you, maybe 40 minutes. Receiver estimate about 40 min, around 2:46 PM ET.",
             },
             source="sample",
         ),

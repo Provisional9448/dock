@@ -35,6 +35,11 @@ _DELAY = (
     "no one",
     "occupied",
     "not unloading",
+    "no door",
+    "no doors",
+    "doors full",
+    "wait in the truck",
+    "wait in your truck",
 )
 _ARRIVED = (
     "i'm here",
@@ -126,6 +131,8 @@ def _reason(text: str) -> str:
     low = text.lower()
     if "occup" in low:
         return "door_occupied"
+    if "no door" in low or "doors full" in low:
+        return "no_door_available"
     if "still waiting" in low or "nobody" in low or "no one" in low:
         return "still_waiting"
     return "receiver_not_ready"

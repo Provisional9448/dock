@@ -24,12 +24,12 @@ def _raw(sample_dir):
 
 def test_one_text_can_arrive_and_report_a_delay(sample_dir):
     context = _context(sample_dir)
-    assert classify("I'm at Harbor and Rye door 4. They are not ready to unload.") == [
+    assert classify("Checked in at receiving 2:06. No doors open, they said wait in the truck, maybe 40 min.") == [
         "arrived",
         "delay_reported",
     ]
     events = normalize_message(
-        "I'm at Harbor and Rye door 4. They are not ready to unload.",
+        "Checked in at receiving 2:06. No doors open, they said wait in the truck, maybe 40 min.",
         load_id="LL-88421",
         party_id="pty_luis",
         role="driver",
@@ -38,7 +38,7 @@ def test_one_text_can_arrive_and_report_a_delay(sample_dir):
         context=context,
     )
     assert [event.type for event in events] == ["arrived", "delay_reported"]
-    assert events[1].payload["reason"] == "receiver_not_ready"
+    assert events[1].payload["reason"] == "no_door_available"
 
 
 def test_unrecognized_driver_text_is_an_error(sample_dir):

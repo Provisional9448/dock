@@ -31,12 +31,13 @@
 - Run tests before pushing (see AGENTS.md).
 - Don't edit files in someone else's lane without saying so in the PR.
 
-## Live status (updated 5:48 PM PT)
+## Live status (updated 6:20 PM PT)
 - Pitch: shipper, consignee, broker, carrier all on the same page.
 - Box build (in progress): Guava inbound voice agent (`packages/dock-voice`) handling track/status/driver-report/doc requests from any party; live web views; replay mode; `docs/DEMO-SCRIPT.md`.
 - Merged: PR #1 `dock-notify` heads-up SMS + voice script.
 - Merged: PR #2 `dock-clock` scenario tests + timezone fix.
-- Cloud agent: `packages/dock-track` tracking-request intake (PR coming).
-- Cloud agent: `data/samples/board/` 8-load dispatcher fixtures (PR coming).
+- Merged: PR #3 `dock-track` tracking-request intake.
+- Merged: PR #4 `data/samples/board/` 8-load dispatcher fixtures. Cloud agent now building the dispatcher board view in `packages/dock-web` (its lane; don't touch dock-web).
+- Driver story rewritten: Luis already checked in at receiving at 2:06 and was told "no doors, wait in the truck, maybe 40 min"; he calls Dock to put that check-in and the promise on the record (no directions). Voice prompts, roleplays, fixtures, `docs/DEMO-SCRIPT.md` updated. Line fixes from the 6:10 test call: says "Eastern" not "ET", correct time left, rate with every $ figure, asks "Anything else?" before hanging up, skips the role question if the caller opens with it.
 - Done: fictional docs in `data/samples/docs/`; fictional tracking requests + partner threads in `data/samples/conversations/`; cleaned mocks incl. dispatcher board in `site/`.
 - Still open for Brian: `packages/dock-proof` export, README judges section.

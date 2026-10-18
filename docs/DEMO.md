@@ -25,7 +25,7 @@ Open http://127.0.0.1:8741. The banner should say the desk is fictional and that
 ## Play the carrier, then the shipper
 
 1. Leave the role on **Carrier** and the clock on **Just arrived**.
-   You should see Luis at Harbor & Rye, a delay that door 4 is occupied, stamp `ON FREE TIME`, headline `1h 56m free`, estimate `$0.00`.
+   You should see Luis at Harbor & Rye, a delay: checked in at the receiving window at 2:06, receiver said no doors open, wait in the truck, maybe 40 minutes, stamp `ON FREE TIME`, headline `1h 56m free`, estimate `$0.00`.
 2. Press **30 min of free time left**. Switch to **Shipper**.
    Sam has one SMS. It says the estimate is `$0.00`, free time ends 4:06 PM ET, and that starting the unload before then keeps the trail at zero. The delivery status on the card is `logged`.
 3. Switch back to **Carrier** and press **15 min past free time**.
@@ -39,7 +39,7 @@ If a button does nothing, look at the note under the clock. A red line there is 
 
 Stay on **Carrier**. The three chips fill the text box. **Log driver SMS** stamps the message with the demo clock, not your laptop's clock.
 
-- At **Just arrived**, send "Still waiting. Door is occupied." A new `delay_reported` line shows up. The dollars do not change. Waiting is already the story.
+- At **Just arrived**, send "Still waiting. They said another 20." A new `delay_reported` line shows up. The dollars do not change. Waiting is already the story.
 - The phrase "They started unloading." is an `unload_started` at the current demo time. If you send it during free time, the sample's 4:48 PM unload is no longer the first stop, and the estimate can drop to `$0.00` because unload "started" early. That is the clock being consistent. Press **Reset sample** to go back to the curated facts.
 
 "hello?" is rejected. Intake only knows arrival, not-ready, unload started, and unload finished. The page returns that as an error rather than logging a vague event.
