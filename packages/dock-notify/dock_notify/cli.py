@@ -14,7 +14,11 @@ from dock_notify.provider import provider_from_env
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="dock-notify",
-        description="Append heads-up events for each charge_risk. The default provider only logs.",
+        description=(
+            "Append notice_sent for each charge_risk. "
+            "The body is the SMS. The voice field is the spoken script. "
+            "The default provider only logs."
+        ),
     )
     parser.add_argument(
         "--audiences",
