@@ -20,6 +20,7 @@ EVENT_TYPES = (
     "clock_started",
     "charge_risk",
     "claim_drafted",
+    "tracking_requested",
 )
 ROLES = ("driver", "shipper", "consignee", "broker", "carrier", "system")
 CHANNELS = ("voice", "sms", "web", "system", "cli")
@@ -115,6 +116,10 @@ PAYLOAD_RULES: dict[str, dict[str, str]] = {
         "title": _STR,
         "markdown": _STR,
         "estimated_charge_usd": _MONEY,
+    },
+    "tracking_requested": {
+        "intent": _STR,
+        "summary": _STR,
     },
 }
 
