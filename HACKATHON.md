@@ -22,8 +22,8 @@
 
 ### Open lanes (pick one, say so in the PR title)
 - `packages/dock-proof`: export the timestamped proof pack as Markdown/PDF for the broker view.
-- `packages/dock-notify`: message templates for heads-ups at 30 min left, free time ended, every 15 min accruing; pure functions + tests.
-- Tests: scenario tests for `dock-clock` edge cases (late arrival, clock stop, midnight).
+- [taken: cloud agent] `packages/dock-notify`: message templates for heads-ups at 30 min left, free time ended, every 15 min accruing; pure functions + tests.
+- [taken: cloud agent] Tests: scenario tests for `dock-clock` edge cases (late arrival, clock stop, midnight).
 - README: crisp top section for judges (problem, 3-line pitch, how to run, architecture diagram).
 
 ## How to contribute
