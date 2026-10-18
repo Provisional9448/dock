@@ -31,9 +31,12 @@
 - Run tests before pushing (see AGENTS.md).
 - Don't edit files in someone else's lane without saying so in the PR.
 
-## Live status (updated 5:38 PM PT)
-- Building on Anthony's box: Guava inbound voice agent (`packages/dock-voice`), live web views, replay mode, `docs/DEMO-SCRIPT.md`.
-- Cloud agent PRs coming (~6:30 PM): `dock-notify` heads-up templates, `dock-clock` scenario tests.
-- Coming ~6:30 PM: fictional shipment documents (BOL, rate con, POD, detention invoice) modeled on real freight paperwork, every name and number invented, in `data/samples/docs/`.
-- New mock coming: dispatcher board (`site/03-dispatcher-board.html`), a many-loads view for dispatchers.
+## Live status (updated 5:48 PM PT)
+- Pitch: shipper, consignee, broker, carrier all on the same page.
+- Box build (in progress): Guava inbound voice agent (`packages/dock-voice`) handling track/status/driver-report/doc requests from any party; live web views; replay mode; `docs/DEMO-SCRIPT.md`.
+- PR #1 `dock-notify` heads-up SMS + voice script: in review.
+- PR #2 `dock-clock` scenario tests + timezone fix: in review.
+- Cloud agent: `packages/dock-track` tracking-request intake (PR coming).
+- Cloud agent: `data/samples/board/` 8-load dispatcher fixtures (PR coming).
+- Done: fictional docs in `data/samples/docs/`; cleaned mocks incl. dispatcher board in `site/`.
 - Still open for Brian: `packages/dock-proof` export, README judges section.
