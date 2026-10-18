@@ -26,6 +26,25 @@ No carrier, no Guava account, no SMS provider.
 
 The longer script, including playing the driver by SMS, is [docs/DEMO.md](docs/DEMO.md).
 
+## Live demo (hackathon)
+
+One Guava inbound line, one shared log, three live views. Outbound calling is disabled at the event, so the shipper and receiver *call in* and hear the heads-up Dock would have dialed out with.
+
+- Live desk: https://dock-desk-production.up.railway.app (shipper, carrier, broker side by side; refreshes every 1.5 s)
+- Call the Dock line: **(240) 212-5485**. Say "driver", "shipper", "receiver" or "broker".
+- Video script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md)
+
+```bash
+uv sync && guava login
+export GUAVA_AGENT_NUMBER=+1...            # guava numbers list
+uv run dock-web --live --port 8741 &      # http://127.0.0.1:8741
+uv run dock-voice serve                   # inbound only
+uv run dock-voice roleplay shipper        # Guava's simulated caller, no phone
+uv run dock-live replay --pause 4         # scripted fallback
+```
+
+`dock-voice` (packages/dock-voice) reads the clock inside its handlers, so numbers are current mid-call. `DOCK_LIVE_URL` + `DOCK_WRITE_TOKEN` let the agent write to a desk on another machine.
+
 ## Quickstart
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
