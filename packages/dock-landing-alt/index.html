@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07060c" />
+  <title>Dock · The dock calls back.</title>
+  <meta name="description" content="Dock is an automated phone line for freight. It tracks the wait, checks who's calling, and updates the shipper, consignee, and broker." />
+  <style>
+    :root {
+      --bg: #07060c;
+      --ink: #f6f1ea;
+      --muted: #b7b0c2;
+      --accent: linear-gradient(105deg, #ff8ec8 0%, #c9a0ff 34%, #8eb4ff 66%, #ffb07a 100%);
+      --amp: 0.42;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    html { background: var(--bg); }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid #ffb0dc; outline-offset: 3px; }
+    button, input { font: inherit; color: inherit; }
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      overflow: hidden;
+      background:
+        radial-gradient(48% 40% at 50% 38%, rgba(140, 80, 255, 0.16), transparent 70%),
+        var(--bg);
+    }
+    .orb-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      z-index: 0;
+    }
+    html.webgl .orb-canvas { display: block; }
+    .orb-fallback {
+      grid-row: 1;
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      position: relative;
+      z-index: 0;
+    }
+    html.webgl .orb-fallback { visibility: hidden; }
+    .orb-stage {
+      width: min(52vh, 440px);
+      aspect-ratio: 1;
+      position: relative;
+      transform: scale(calc(0.94 + var(--amp) * 0.12));
+    }
+    .orb-stage .glow {
+      position: absolute;
+      inset: -12%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(180, 110, 255, 0.45), rgba(255, 120, 80, 0.08) 55%, transparent 70%);
+      filter: blur(18px);
+    }
+    .orb-mass {
+      position: absolute;
+      inset: 8%;
+      border-radius: 50%;
+      overflow: hidden;
+      filter: blur(16px) saturate(calc(1.15 + var(--amp) * 0.45)) brightness(calc(0.95 + var(--amp) * 0.3));
+      background: #120814;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      mix-blend-mode: screen;
+    }
+    .blob.pink { width: 68%; height: 64%; left: 8%; top: 16%; background: #ff5ca8; }
+    .blob.purple { width: 62%; height: 70%; right: 4%; top: 10%; background: #9a4dff; }
+    .blob.blue { width: 64%; height: 58%; left: 18%; bottom: 6%; background: #4d7dff; }
+    .blob.orange { width: 48%; height: 48%; right: 12%; bottom: 14%; background: #ff8a3d; }
+    .bar {
+      position: absolute;
+      z-index: 3;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 28px;
+    }
+    .mark {
+      font-family: var(--serif);
+      font-size: 28px;
+      letter-spacing: -0.04em;
+      text-decoration: none;
+    }
+    .repo {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .repo:hover { color: var(--ink); }
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 12px 20px 48px;
+      background: linear-gradient(180deg, transparent, rgba(7, 6, 12, 0.55) 28%, rgba(7, 6, 12, 0.88));
+    }
+    h1 {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: clamp(3.1rem, 7.4vw, 6.4rem);
+      letter-spacing: -0.04em;
+      line-height: 0.92;
+      margin: 0 auto 14px;
+      max-width: 14ch;
+    }
+    h1 em {
+      font-style: italic;
+      background: var(--accent);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .sub {
+      margin: 0 auto 26px;
+      max-width: 40rem;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.15rem);
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      text-decoration: none;
+      color: #1a1022;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 16px 18px 16px 26px;
+      font-weight: 700;
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      box-shadow: 0 12px 40px rgba(150, 90, 255, 0.28);
+    }
+    .cta .num {
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      background: rgba(18, 8, 24, 0.12);
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+    .mic {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    html.motion .mic { display: inline-flex; }
+    .mic[aria-pressed="true"] {
+      box-shadow: 0 0 0 1px rgba(255, 158, 212, 0.7);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ff8ec8;
+    }
+    html.motion .mic[aria-pressed="true"] .dot {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .mic-status {
+      margin: 0;
+      min-height: 1.2em;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .try {
+      margin: 8px auto 0;
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px 10px;
+      align-items: center;
+      max-width: min(680px, 100%);
+      padding: 8px 14px 8px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .try b {
+      color: #1a1022;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .band {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 18px 0 8px;
+    }
+    .caps { padding-bottom: 28px; }
+    .caps ul, .flow {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .caps ul {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .caps li {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px 16px 22px;
+    }
+    .icon {
+      width: 42px; height: 42px;
+      display: grid; place-items: center;
+      border-radius: 13px;
+      margin-bottom: 14px;
+      background: linear-gradient(140deg, rgba(255, 142, 200, 0.22), rgba(142, 180, 255, 0.12) 55%, rgba(255, 176, 122, 0.2));
+    }
+    .icon svg { width: 22px; height: 22px; }
+    .caps h2 {
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin: 0 0 6px;
+    }
+    .caps p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+    .flow-wrap { padding-bottom: 72px; }
+    .flow {
+      display: flex;
+      position: relative;
+      gap: 8px;
+    }
+    .flow::before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 18px;
+      height: 2px;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+    .flow li {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+    .flow li span {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      background: #120f18;
+      border: 2px solid #ffb0dc;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    html.js .flow li { opacity: 0; }
+    html.js .flow.in li { animation: rise 0.7s cubic-bezier(.16, .84, .32, 1) forwards; }
+    html.js .flow.in li:nth-child(1) { animation-delay: 0.02s; }
+    html.js .flow.in li:nth-child(2) { animation-delay: 0.12s; }
+    html.js .flow.in li:nth-child(3) { animation-delay: 0.22s; }
+    html.js .flow.in li:nth-child(4) { animation-delay: 0.32s; }
+    html.js .flow.in li:nth-child(5) { animation-delay: 0.42s; }
+    footer {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 0 0 36px;
+    }
+    footer a { color: var(--muted); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes pulse {
+      50% { transform: scale(1.45); opacity: 0.6; }
+    }
+    @media (max-width: 860px) {
+      .caps ul { grid-template-columns: 1fr 1fr; }
+      .bar { padding: 18px 16px; }
+      .repo { font-size: 13px; }
+    }
+    @media (max-width: 640px) {
+      .caps ul { grid-template-columns: 1fr; }
+      .flow { flex-direction: column; align-items: flex-start; gap: 16px; padding-left: 6px; }
+      .flow::before { left: 23px; right: auto; top: 8px; bottom: 8px; width: 2px; height: auto; }
+      .flow li { flex-direction: row; text-align: left; gap: 12px; }
+      .hero-copy { padding-bottom: 32px; }
+      .try { border-radius: 18px; }
+      .cta { width: min(100%, 420px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html.js .flow li, html.js .flow.in li {
+        opacity: 1;
+        animation: none;
+        transform: none;
+      }
+      .dot { animation: none !important; }
+      .orb-stage { transform: none; }
+    }
+  </style>
+  <script>
+    document.documentElement.classList.add("js");
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.documentElement.classList.add("motion");
+    }
+  </script>
+</head>
+<body>
+  <section class="hero" id="top">
+    <canvas class="orb-canvas" id="orb" aria-hidden="true"></canvas>
+    <div class="orb-fallback" aria-hidden="true">
+      <div class="orb-stage">
+        <div class="glow"></div>
+        <div class="orb-mass">
+          <span class="blob pink"></span>
+          <span class="blob purple"></span>
+          <span class="blob blue"></span>
+          <span class="blob orange"></span>
+        </div>
+      </div>
+    </div>
+    <header class="bar">
+      <a class="mark" href="#top">Dock</a>
+      <a class="repo" href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a>
+    </header>
+    <div class="hero-copy">
+      <h1>The dock <em>calls back.</em></h1>
+      <p class="sub">Tracks the wait, checks who's calling, and updates the shipper, consignee, and broker.</p>
+      <div class="actions">
+        <a class="cta" href="tel:+12402125485">
+          <span>Talk to an agent</span>
+          <span class="num">(240) 212-5485</span>
+        </a>
+        <button class="mic" id="mic" type="button" aria-pressed="false">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="mic-label">Try the orb</span>
+        </button>
+        <p class="mic-status" id="mic-status" role="status"></p>
+      </div>
+      <p class="try"><b>Try it</b> <span>It's LL-88421, this is Dan at Northwind Orchards.</span></p>
+    </div>
+  </section>
+  <section class="band caps" aria-label="Capabilities">
+    <ul>
+      <li>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.7">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="24" y2="24">
+                <stop stop-color="#ff8ec8"/><stop offset="0.5" stop-color="#8eb4ff"/><stop offset="1" stop-color="#ffb07a"/>
+              </linearGradient>
+            </defs>
+            <path d="M8 5.5h8M7 8h10l1 12H6L7 8z"/><path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <h2>Verifies the caller</h2>
+        <p>Load and name, or the line stays general.</p>
+      </li>
+      <li>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.7">
+            <circle cx="12" cy="13" r="7"/><path d="M12 10v4l2 2M9 4h6"/>
+          </svg>
+        </div>
+        <h2>Logs the wait</h2>
+        <p>Arrival, door, and free time on one trail.</p>
+      </li>
+      <li>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.7">
+            <path d="M6 16V10a6 6 0 0 1 12 0v6"/><path d="M4 16h16v2H4z"/>
+          </svg>
+        </div>
+        <h2>Warns the payer</h2>
+        <p>The estimate, while it can still stay zero.</p>
+      </li>
+      <li>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="1.7">
+            <path d="M5 6h14v9H8l-3 3V6z"/><path d="M8 10h8M8 13h5"/>
+          </svg>
+        </div>
+        <h2>Updates the broker</h2>
+        <p>Status, and the record behind the bill.</p>
+      </li>
+    </ul>
+  </section>
+  <section class="band flow-wrap" aria-label="Call flow">
+    <ol class="flow" id="flow">
+      <li><span>1</span> Driver calls</li>
+      <li><span>2</span> Dock verifies</li>
+      <li><span>3</span> Clock runs</li>
+      <li><span>4</span> Payer warned</li>
+      <li><span>5</span> Broker updated</li>
+    </ol>
+  </section>
+  <footer>
+    <a href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a>
+  </footer>
+  <script>
+    (function () {
+      var flow = document.getElementById("flow");
+      if (!flow) return;
+      if (!document.documentElement.classList.contains("motion")) {
+        flow.classList.add("in");
+        return;
+      }
+      if (!("IntersectionObserver" in window)) {
+        flow.classList.add("in");
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            flow.classList.add("in");
+            io.disconnect();
+          }
+        });
+      }, { threshold: 0.35 });
+      io.observe(flow);
+    })();
+  </script>
+  <script type="module">
+    const motion = document.documentElement.classList.contains("motion");
+    const canvas = document.getElementById("orb");
+    const micBtn = document.getElementById("mic");
+    const micLabel = document.getElementById("mic-label");
+    const micStatus = document.getElementById("mic-status");
+    const rootStyle = document.documentElement.style;
+    const state = { amp: 0.2, speak: 1, mic: false, ctx: null, stream: null, analyser: null, data: null, uniforms: null };
+
+    function simulated(now) {
+      const t = now / 1000;
+      const cycle = 7.2;
+      const x = t % cycle;
+      const speaking = x < 4.4;
+      if (!speaking) {
+        return { target: 0.07 + 0.04 * (0.5 + 0.5 * Math.sin(t * 1.2)), speak: 0 };
+      }
+      const local = x / 4.4;
+      const phrase = Math.sin(local * Math.PI);
+      const s1 = Math.pow(0.5 + 0.5 * Math.sin(t * 9.2), 1.5);
+      const s2 = Math.pow(0.5 + 0.5 * Math.sin(t * 15.4 + 2.0), 2.6);
+      const target = Math.min(1, (0.1 + (s1 * 0.62 + s2 * 0.4) * (0.3 + phrase)) * (0.35 + phrase));
+      return { target, speak: 1 };
+    }
+
+    function sampleMic() {
+      state.analyser.getByteTimeDomainData(state.data);
+      let sum = 0;
+      for (let i = 0; i < state.data.length; i++) {
+        const v = (state.data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / state.data.length);
+      const level = Math.min(1, Math.max(0, (rms - 0.012) * 8));
+      return { target: level, speak: level > 0.08 ? 1 : 0.2 };
+    }
+
+    function apply(target, speak) {
+      const k = target > state.amp ? 0.34 : 0.09;
+      state.amp += (target - state.amp) * k;
+      state.speak += (speak - state.speak) * 0.12;
+      rootStyle.setProperty("--amp", state.amp.toFixed(3));
+      if (state.uniforms) {
+        state.uniforms.uAmp.value = state.amp;
+        state.uniforms.uSpeak.value = state.speak;
+      }
+    }
+
+    function stopMic() {
+      state.mic = false;
+      if (state.stream) state.stream.getTracks().forEach((track) => track.stop());
+      if (state.ctx) state.ctx.close();
+      state.stream = null;
+      state.ctx = null;
+      state.analyser = null;
+      micBtn.setAttribute("aria-pressed", "false");
+      micLabel.textContent = "Try the orb";
+    }
+
+    if (motion && micBtn) {
+      micBtn.addEventListener("click", async () => {
+        if (state.mic) {
+          stopMic();
+          micStatus.textContent = "";
+          return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          micStatus.textContent = "Microphone unavailable. The orb keeps a simulated voice.";
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+            video: false,
+          });
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new Ctx();
+          if (ctx.state === "suspended") await ctx.resume();
+          const source = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.7;
+          source.connect(analyser);
+          state.stream = stream;
+          state.ctx = ctx;
+          state.analyser = analyser;
+          state.data = new Uint8Array(analyser.fftSize);
+          state.mic = true;
+          micBtn.setAttribute("aria-pressed", "true");
+          micLabel.textContent = "Listening";
+          micStatus.textContent = "";
+        } catch (err) {
+          micStatus.textContent = "Microphone blocked. The orb keeps a simulated voice.";
+        }
+      });
+      window.addEventListener("pagehide", stopMic);
+    }
+
+    const vert = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `;
+    const frag = `
+      precision highp float;
+      uniform vec2 uResolution;
+      uniform vec2 uOrigin;
+      uniform float uTime;
+      uniform float uAmp;
+      uniform float uSpeak;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                   mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p *= 2.05;
+          a *= 0.5;
+        }
+        return v;
+      }
+      float blob(vec2 p, vec2 c, float r) {
+        vec2 d = p - c;
+        return exp(-dot(d, d) / (r * r));
+      }
+
+      void main() {
+        vec2 fragCoord = vUv * uResolution;
+        vec2 uv = (fragCoord - uOrigin) / min(uResolution.x, uResolution.y);
+        float t = uTime;
+        float amp = clamp(uAmp, 0.0, 1.0);
+        float speak = clamp(uSpeak, 0.0, 1.0);
+        float turb = 0.55 + speak * 0.85 + amp * 0.7;
+        vec2 warp = vec2(
+          fbm(uv * 2.3 + vec2(t * 0.17, -t * 0.11)),
+          fbm(uv * 2.3 + vec2(4.2, -t * 0.13))
+        );
+        vec2 p = uv + (warp - 0.5) * 0.16 * turb;
+        float spin = t * (0.32 + speak * 0.5);
+        float cs = cos(spin);
+        float sn = sin(spin);
+        vec2 q = mat2(cs, sn, -sn, cs) * p;
+        float breathe = 1.0 + amp * 0.28;
+        vec2 c1 = vec2(cos(t * 0.85), sin(t * 1.05)) * 0.12 * breathe;
+        vec2 c2 = vec2(cos(t * 0.62 + 2.1), sin(t * 0.77 + 1.3)) * 0.14 * breathe;
+        vec2 c3 = vec2(sin(t * 0.71 + 0.6), cos(t * 0.93)) * 0.11 * breathe;
+        vec2 c4 = vec2(cos(t * 1.13 + 4.0), sin(t * 0.48 + 2.4)) * 0.13 * breathe;
+        vec2 c5 = vec2(sin(t * 0.54 + 1.7), cos(t * 0.66 + 3.1)) * 0.08 * breathe;
+        float b1 = blob(q, c1, 0.20 + amp * 0.055);
+        float b2 = blob(q, c2, 0.18 + amp * 0.05);
+        float b3 = blob(q, c3, 0.17 + amp * 0.045);
+        float b4 = blob(q, c4, 0.155 + amp * 0.05);
+        float b5 = blob(q, c5, 0.12 + amp * 0.03);
+        float core = blob(q, c1 * 0.3, 0.085 + amp * 0.035);
+        vec3 col = vec3(0.0);
+        col += vec3(1.00, 0.36, 0.66) * b1 * 1.2;
+        col += vec3(0.78, 0.28, 1.00) * b2 * 1.15;
+        col += vec3(0.28, 0.50, 1.00) * b3 * 1.25;
+        col += vec3(1.00, 0.50, 0.22) * b4 * 1.15;
+        col += vec3(1.00, 0.74, 0.62) * b5;
+        col += vec3(1.0, 0.95, 0.98) * core * (0.85 + amp);
+        float field = b1 + b2 + b3 + b4;
+        col += vec3(1.0, 0.92, 0.98) * smoothstep(1.2, 2.3, field) * (0.25 + amp * 0.5);
+        float rad = length(uv);
+        float orbR = 0.31 + amp * 0.06;
+        float body = smoothstep(orbR, orbR - 0.10, rad);
+        float ang = atan(uv.y, uv.x);
+        float wave = 0.5 + 0.5 * sin(ang * 7.0 - t * (3.0 + amp * 9.0));
+        wave *= 0.7 + 0.3 * sin(ang * 3.0 + t * 2.0);
+        float rimR = orbR + (wave - 0.5) * 0.045 * (0.35 + amp * 1.5);
+        float rim = smoothstep(0.02, 0.0, abs(rad - rimR)) * (0.4 + amp);
+        float rings = 0.0;
+        for (int i = 0; i < 3; i++) {
+          float fi = float(i);
+          float phase = fract(t * (0.18 + amp * 0.25) + fi * 0.33);
+          float rr = mix(orbR * 0.9, 0.68 + amp * 0.1, phase);
+          rings += smoothstep(0.02, 0.0, abs(rad - rr)) * (1.0 - phase) * (0.12 + amp) * (0.25 + speak);
+        }
+        vec3 rgb = col * body * (1.2 + amp * 0.65);
+        rgb += mix(vec3(1.0, 0.45, 0.75), vec3(0.4, 0.6, 1.0), 0.5) * rim;
+        rgb += mix(vec3(0.35, 0.5, 1.0), vec3(1.0, 0.45, 0.7), 0.5) * rings;
+        float glow = exp(-max(rad - orbR * 0.65, 0.0) * (7.2 - amp * 2.2));
+        rgb += mix(vec3(0.75, 0.3, 1.0), vec3(1.0, 0.5, 0.25), 0.4) * glow * (0.22 + amp * 0.35);
+        rgb = 1.0 - exp(-rgb * (1.2 + amp * 0.4));
+        float alpha = clamp(body + glow * 0.9 + rings + rim * 0.45, 0.0, 1.0);
+        alpha *= smoothstep(0.98, 0.32, rad);
+        gl_FragColor = vec4(rgb, alpha);
+      }
+    `;
+
+    function frameOrigin(width, height, dpr) {
+      const hero = canvas.parentElement.getBoundingClientRect();
+      const copy = document.querySelector(".hero-copy").getBoundingClientRect();
+      const mid = hero.top + (copy.top - hero.top) * 0.5;
+      const y = hero.bottom - mid;
+      return { x: width * 0.5 * dpr, y: y * dpr };
+    }
+
+    async function bootWebGL() {
+      const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js");
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: false,
+        premultipliedAlpha: false,
+        powerPreference: "high-performance",
+      });
+      if (!renderer.getContext()) throw new Error("no webgl");
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const uniforms = {
+        uResolution: { value: new THREE.Vector2(1, 1) },
+        uOrigin: { value: new THREE.Vector2(1, 1) },
+        uTime: { value: 0 },
+        uAmp: { value: 0.3 },
+        uSpeak: { value: 1 },
+      };
+      const material = new THREE.ShaderMaterial({
+        uniforms,
+        vertexShader: vert,
+        fragmentShader: frag,
+        transparent: true,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+      scene.add(mesh);
+      state.uniforms = uniforms;
+
+      function resize() {
+        const w = canvas.clientWidth || 1;
+        const h = canvas.clientHeight || 1;
+        const dpr = Math.min(window.devicePixelRatio || 1, w < 800 ? 1.25 : 1.5);
+        renderer.setPixelRatio(1);
+        renderer.setSize(Math.floor(w * dpr), Math.floor(h * dpr), false);
+        uniforms.uResolution.value.set(renderer.domElement.width, renderer.domElement.height);
+        const origin = frameOrigin(w, h, dpr);
+        uniforms.uOrigin.value.set(origin.x, origin.y);
+      }
+      resize();
+      window.addEventListener("resize", resize);
+      document.documentElement.classList.add("webgl");
+
+      let last = performance.now();
+      function loop(now) {
+        if (document.hidden) {
+          requestAnimationFrame(loop);
+          return;
+        }
+        const sample = state.mic ? sampleMic() : simulated(now);
+        apply(sample.target, sample.speak);
+        uniforms.uTime.value = now / 1000;
+        renderer.render(scene, camera);
+        last = now;
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    }
+
+    if (motion) {
+      bootWebGL().catch(() => {
+        let last = performance.now();
+        function loop(now) {
+          const sample = state.mic ? sampleMic() : simulated(now);
+          apply(sample.target, sample.speak);
+          last = now;
+          requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+      });
+    }
+  </script>
+</body>
+</html>
