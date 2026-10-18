@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Dock · dispatcher board</title><link rel="stylesheet" href="base.css"><style>
+body{width:1440px;min-height:900px}
+.cols{display:grid;grid-template-columns:200px 220px 140px 180px 1fr 260px;column-gap:32px}
+.kpis{padding:28px 40px 24px}
+.board{padding:0 40px 32px}
+.head{padding:12px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--line)}
+.row{padding:14px 0;border-bottom:1px solid var(--line);align-items:start}
+.row:hover{background:#EFEDE7}
+.foot{display:flex;justify-content:space-between;padding-top:16px}
+</style></head><body>
+<div class="top"><span class="p">Dock</span><span class="t">Dispatch board · Red Kettle Freight and partners · 8 active loads</span><span class="grow"></span>
+<div class="tabs"><span class="on">Dispatcher</span><span>Carrier</span><span>Shipper</span><span>Broker</span></div></div>
+<div class="note">Fictional desk · demo clock Sat Oct 17, 3:50 PM ET · heads-ups arrive as inbound calls in this demo (outbound calling is disabled for the hackathon)</div>
+<div class="kpis cols">
+ <div><div class="t">Loads at risk</div><div class="l red">4</div><div class="t">2 accruing · 2 under 30 min</div></div>
+ <div><div class="t">Accruing now</div><div class="l red">$56.25</div><div class="t">+$37.50 every 15 min</div></div>
+ <div></div>
+ <div><div class="t">Next free time to end</div><div class="l">4:06 PM</div><div class="t">LL-88421 · door 4</div></div>
+ <div></div>
+ <div><div class="t">Heads-ups today</div><div class="s">5</div><div class="t">Logged from inbound calls · outbound off in demo</div></div>
+</div>
+<div class="board">
+<div class="head cols t"><span>Driver</span><span>Facility · door</span><span>Status</span><span>Time left or $</span><span>Last driver update</span><span>Next action</span></div>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Dana Whitfield</div><div class="t">LL-88407 · truck 2207</div></div>
+ <div><div class="s">Crestline Foods DC</div><div class="t">Allentown PA · door 11</div></div>
+ <div class="s">Accruing</div>
+ <div><div class="p red">$37.50</div><div class="t">30 min past free time</div></div>
+ <div><div class="s">“Still blocked. They're short a lumper.”</div><div class="t">Voice · 3:44 PM</div></div>
+ <div class="p">Ask DC for a commit time on its next call</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Marcus Bell</div><div class="t">LL-88415 · truck 0932</div></div>
+ <div><div class="s">Pinebrook Cold Storage</div><div class="t">Secaucus NJ · door 2</div></div>
+ <div class="s">Accruing</div>
+ <div><div class="p red">$18.75</div><div class="t">12 min past free time</div></div>
+ <div><div class="s">“Dock says 20 more min.”</div><div class="t">SMS · 3:41 PM</div></div>
+ <div class="p">Log the 4:01 commit from the driver's text</div>
+</a>
+<a class="row cols" href="01-carrier-just-arrived.html">
+ <div><div class="s">Luis Ortega</div><div class="t">LL-88421 · truck 1841</div></div>
+ <div><div class="s">Harbor &amp; Rye Grocery DC</div><div class="t">Elizabeth NJ · door 4</div></div>
+ <div class="s">30 min left</div>
+ <div><div class="p amber">16m left</div><div class="t">Free time ends 4:06</div></div>
+ <div><div class="s">“Still waiting. Door is occupied.” DC said about 40 min.</div><div class="t">SMS · 2:08 PM · DC call 3:40</div></div>
+ <div class="p">Ask DC to start by 4:06 (their 4:20 costs ~$18.75)</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Rosa Delgado</div><div class="t">LL-88433 · truck 3310</div></div>
+ <div><div class="s">Meadowgate Market DC</div><div class="t">Edison NJ · door 7</div></div>
+ <div class="s">30 min left</div>
+ <div><div class="p amber">27m left</div><div class="t">Free time ends 4:17</div></div>
+ <div><div class="s">“Checked in, doors full. They said maybe four.”</div><div class="t">Voice · 3:35 PM</div></div>
+ <div class="p">Wait for DC's commit time (heads-up logged 3:47)</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Tom Nguyen</div><div class="t">LL-88438 · truck 1177</div></div>
+ <div><div class="s">Harbor &amp; Rye Grocery DC</div><div class="t">Elizabeth NJ · door 9</div></div>
+ <div class="s">On free time</div>
+ <div><div class="s">1h 22m</div><div class="t">Free time ends 5:12</div></div>
+ <div><div class="s">“Arrived, waiting on a door.”</div><div class="t">SMS · 3:28 PM</div></div>
+ <div class="t">Nothing yet · flag at 4:42 if still waiting</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Keisha Brooks</div><div class="t">LL-88442 · truck 0418</div></div>
+ <div><div class="s">Crestline Foods DC</div><div class="t">Allentown PA · door 3</div></div>
+ <div class="s">On free time</div>
+ <div><div class="s">1h 48m</div><div class="t">Free time ends 5:38</div></div>
+ <div><div class="s">“Backed into door 3, waiting on paperwork.”</div><div class="t">Voice · 3:48 PM</div></div>
+ <div class="t">Nothing yet</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Omar Haddad</div><div class="t">LL-88450 · truck 2290</div></div>
+ <div><div class="s">Meadowgate Market DC</div><div class="t">Edison NJ · appt 4:30</div></div>
+ <div class="t">En route</div>
+ <div><div class="s">ETA 4:15</div><div class="t">Clock starts at 4:30 appt</div></div>
+ <div><div class="s">“About 45 out.”</div><div class="t">SMS · 3:30 PM</div></div>
+ <div class="t">Early arrival won't burn free time</div>
+</a>
+<a class="row cols" href="02-three-views.html">
+ <div><div class="s">Jen Park</div><div class="t">LL-88419 · truck 1502</div></div>
+ <div><div class="s">Pinebrook Cold Storage</div><div class="t">Secaucus NJ · door 5</div></div>
+ <div class="t">Clock stopped</div>
+ <div><div class="t">$0.00</div><div class="t">Unloaded inside free time</div></div>
+ <div><div class="s">“They started unloading.”</div><div class="t">SMS · 3:15 PM</div></div>
+ <div class="t">Proof pack ready · not an invoice</div>
+</a>
+<div class="foot"><span class="t">Sorted by risk: accruing first, then least free time left. Every row reads the same event log as the per-load views.</span><span class="t">Click a row to open the per-load view (sample load LL-88421)</span></div>
+</div></body></html>

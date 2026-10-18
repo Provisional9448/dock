@@ -30,6 +30,29 @@ No carrier, no Guava account, no SMS provider.
 
 The longer script, including playing the driver by SMS, is [docs/DEMO.md](docs/DEMO.md).
 
+## Inbound demo on Brian's branch
+
+The phone listener and read-only dashboard share `data/runtime/inbound-demo.jsonl`
+and a pinned fictional clock. Reports are read back and saved only after confirmation.
+`dock-voice serve` delegates to the same safe adapter as `dock-inbound phone`.
+
+```bash
+uv sync --frozen
+# Authenticate with guava login, then set your assigned number in the environment.
+export DOCK_INBOUND_MODE=live
+export GUAVA_AGENT_NUMBER=+1...
+./scripts/demo-up.sh
+```
+
+See [the inbound runbook](docs/INBOUND_DEMO.md) for manual commands and the call script.
+The launcher does not replace an existing listener. This flow does not automatically
+record call audio or promise proactive notifications.
+
+Main's separate moving-clock desk and scripted replay remain available through
+`dock-web --live` and `dock-live replay`. They use `data/runtime/live.jsonl` and are
+simulation tools, separate from confirmed inbound evidence. `dock-voice chat` and
+`roleplay` exercise that legacy flow and use Guava services.
+
 ## Quickstart
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).

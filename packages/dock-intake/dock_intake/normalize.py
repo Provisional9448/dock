@@ -45,6 +45,10 @@ _ARRIVED = (
     "arrived",
     "at harbor",
     "checked in",
+    "i'm at",
+    "i am at",
+    "im at",
+    "at door",
 )
 
 

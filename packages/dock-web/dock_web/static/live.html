@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dock · live detention desk</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F4F3EF;color:#1A1A1A;font-family:"IBM Plex Sans","Inter",system-ui,sans-serif;font-size:14px;line-height:1.4;min-height:100vh}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.muted{color:#5F5B53}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 28px;border-bottom:1px solid #CFCBC2;background:#FBFAF7}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.brand b{font-size:20px;letter-spacing:-.02em}
+.clock{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock .now{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:#B42318}
+.live i{width:8px;height:8px;border-radius:50%;background:#B42318;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.phone{border:1px solid #1A1A1A;border-radius:4px;padding:6px 12px;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.banner{background:#E9E6DE;padding:6px 28px;font-size:12px;color:#5F5B53;font-family:"IBM Plex Mono",monospace;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.stamp{display:inline-block;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:15px;letter-spacing:.12em;padding:5px 12px;border:2.5px solid currentColor;border-radius:3px;transform:rotate(-3deg);align-self:flex-start}
+.p-not_started{color:#5F5B53}.p-running{color:#1A1A1A}.p-warning{color:#A15C07}.p-accruing{color:#B42318}.p-closed{color:#3D5A4A}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5F5B53}
+.rail{position:relative;margin:18px 70px 6px;height:64px}
+.rail .line{position:absolute;top:24px;left:0;right:0;border-top:2px solid #1A1A1A}
+.rail .pay{position:absolute;top:21px;height:8px;right:0;background:repeating-linear-gradient(45deg,#F4E3DF 0 6px,#F4F3EF 6px 12px);border:1px solid #B42318}
+.rail .now{position:absolute;top:8px;height:34px;border-left:2px dashed #2B5BD7}
+.m{position:absolute;top:0;font-family:"IBM Plex Mono",monospace;font-size:11px;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.m.low{top:40px}
+.m i{display:block;width:9px;height:9px;border-radius:50%;background:#1A1A1A;margin:17px auto 4px}
+.m.low i{margin:-24px auto 6px}
+.cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:8px 20px 18px}
+.tag{font-size:17px;font-weight:600;letter-spacing:-.01em;padding:12px 28px 0;color:#1A1A1A}
+.col{background:#FBFAF7;border:1px solid #CFCBC2;border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-height:560px}
+.who{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.h{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.05}
+.sms{background:#ECE9E1;border-radius:12px 12px 12px 3px;padding:12px 14px;font-size:13.5px;line-height:1.45}
+.sms.voice{background:#E3EAF9}
+.sms .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#5F5B53;margin-bottom:4px}
+.card{border:1px solid #CFCBC2;border-radius:6px;padding:12px 14px}
+.card.amber{background:#F7F1E6;border-color:#E2C9A0}
+.card.red{background:#FBF1EF;border-color:#E7B8B1}
+.k{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:6px 0;border-top:1px dashed #CFCBC2}
+.k span:last-child{font-family:"IBM Plex Mono",monospace;text-align:right}
+.ev{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:8px 0;border-top:1px dashed #CFCBC2;font-size:13px}
+.ev .t{font-family:"IBM Plex Mono",monospace;font-size:12px;color:#5F5B53}
+.ev code{font-family:"IBM Plex Mono",monospace;font-size:11px;background:#ECE9E1;padding:1px 5px;border-radius:3px;color:#3F3B34;margin-left:4px}
+.ev.fresh{animation:flash 2.5s ease-out}
+@keyframes flash{0%{background:#FFF3B0}100%{background:transparent}}
+.chip{border:1px solid #9C978C;border-radius:14px;padding:5px 11px;font-size:12px;background:#FBFAF7;cursor:pointer}
+.btn{border:1px solid #1A1A1A;border-radius:4px;padding:7px 12px;font-size:13px;background:transparent;cursor:pointer;font:inherit}
+.btn.pri{background:#1A1A1A;color:#FBFAF7}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+textarea{width:100%;min-height:56px;border:1px solid #CFCBC2;border-radius:6px;background:#fff;padding:8px 10px;font:inherit;resize:vertical}
+.note{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#2B5BD7;min-height:1.2em}
+.note.err{color:#B42318}
+.math{font-family:"IBM Plex Mono",monospace;font-size:12px;color:#5F5B53}
+.foot{padding:0 28px 28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#5F5B53;font-size:12px}
+.pipe{font-family:"IBM Plex Mono",monospace;font-size:12px;background:#1A1A1A;color:#F4F3EF;padding:10px 14px;border-radius:6px;overflow:auto;white-space:pre}
+.empty{color:#5F5B53;font-style:italic}
+@media (max-width:1300px){.cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:800px){.cols{grid-template-columns:1fr}.rail{display:none}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><b>Dock</b><span class="mono muted" style="font-size:12px" id="loadline">LL-88421</span></div>
+  <div class="clock">
+    <span class="live"><i></i>LIVE</span>
+    <span class="now" id="now">--:--</span>
+    <span class="phone" id="phone">Call Dock</span>
+  </div>
+</div>
+<div class="banner"><span id="banner">Loading…</span><span id="note" class="note"></span></div>
+<div class="tag">Shipper, consignee, broker, carrier — all on the same page.</div>
+<div class="rail" id="rail"></div>
+<div class="cols">
+  <section class="col" id="shipper"></section>
+  <section class="col" id="consignee"></section>
+  <section class="col" id="carrier"></section>
+  <section class="col" id="broker"></section>
+</div>
+<div class="foot">
+  <div class="pipe">dock-intake | dock-events | dock-clock | dock-notify | dock-proof   # same JSONL, every view</div>
+  <div>Fictional data. Outbound calls are shown as inbound calls on the same Guava agent. <a href="/sample">Sample desk</a></div>
+</div>
+<script>
+const S = { desk: null, seen: new Set(), first: true, draft: "" };
+const LABEL = { arrived:"Arrived", delay_reported:"Delay", clock_started:"Clock started", charge_risk:"Charge risk", notice_sent:"Heads-up", call_result:"Call", unload_started:"Unload started", unload_done:"Unload done", claim_drafted:"Trail" };
+function el(tag, attrs, kids){ const n=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(k==="class") n.className=v; else if(k.startsWith("on")) n.addEventListener(k.slice(2),v); else if(k==="style") n.setAttribute("style",v); else if(v!=null&&v!==false) n.setAttribute(k,v);} for(const c of kids||[]) n.append(c&&c.nodeType?c:document.createTextNode(c==null?"":String(c))); return n; }
+async function api(path, body){ const r=await fetch(path, body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"}); const j=await r.json(); if(!r.ok) throw new Error(j.error||"request failed"); return j; }
+async function load(path, body){ try{ S.desk=await api(path||"/api/live", body); S.err=""; render(); }catch(e){ S.err=e.message; renderNote(); } }
+function short(t){ return (t||"").replace(/ (AM|PM) ET$/," $1"); }
+function ev(row){ const fresh=!S.first && !S.seen.has(row.event.event_id); return el("div",{class:"ev"+(fresh?" fresh":"")},[el("span",{class:"t"},[short(row.occurred_local)]), el("span",{},[row.line, el("code",{},[row.event.type])])]); }
+function renderNote(){ const n=document.getElementById("note"); n.textContent=S.err||(S.desk&&S.desk.note)||""; n.className="note"+(S.err?" err":""); }
+function facts(d){ return d.events.filter(r=>!["claim_drafted"].includes(r.event.type)); }
+function render(){
+  const d=S.desk, s=d.summary, L=d.load;
+  document.getElementById("loadline").textContent=`${L.load_id} · ${L.reference} · ${L.commodity} · ${L.origin} → ${L.facility} · one event log, four parties`;
+  document.getElementById("now").textContent=d.clock_local;
+  document.getElementById("phone").textContent=d.agent_number?`Call Dock ${fmtPhone(d.agent_number)}`:"Voice line offline · use the SMS box";
+  document.getElementById("banner").textContent=d.banner;
+  renderNote(); rail(d); shipper(d); carrier(d); broker(d);
+  for(const r of d.events) S.seen.add(r.event.event_id); S.first=false;
+}
+function fmtPhone(n){ const m=n.match(/^\+1(\d{3})(\d{3})(\d{4})$/); return m?`(${m[1]}) ${m[2]}-${m[3]}`:n; }
+function stampFor(s){ if(s.phase==="warning") return (s.remaining_free_minutes)+" MIN LEFT"; return s.stamp; }
+function rail(d){
+  const r=document.getElementById("rail"); r.replaceChildren(el("div",{class:"line"}));
+  const clock=d.events.find(x=>x.event.type==="clock_started"); if(!clock){ r.append(el("div",{class:"m",style:"left:0;transform:none;text-align:left"},["Waiting for the driver to check in",el("i",{style:"margin-left:0"})])); return; }
+  const t0=Date.parse(d.load.appointment_at), fe=Date.parse(clock.event.payload.free_time_ends_at), now=Date.parse(d.demo_as_of);
+  const t1=Math.max(fe+75*60000, now+10*60000), pos=t=>Math.max(0,Math.min(100,(t-t0)/(t1-t0)*100));
+  r.append(el("div",{class:"pay",style:`left:${pos(fe)}%`}));
+  const marks=[{t:t0,txt:"appt "+short(fmt(d.load.appointment_at,d)),c:"#1A1A1A"}];
+  let low=true;
+  for(const row of d.events){ const e=row.event, t=Date.parse(e.occurred_at); let txt=null,c="#1A1A1A";
+    if(e.type==="arrived") txt="arrived"; else if(e.type==="notice_sent"&&e.payload.to_role==="shipper") {txt=(e.payload.channel==="voice"?"call · ":"heads-up ")+"$"+e.payload.estimated_charge_usd; c=e.payload.phase==="warning"?"#A15C07":"#B42318";}
+    else if(e.type==="call_result") {txt="call · "+e.payload.to_name.split(" ")[0]; c="#2B5BD7";} else if(e.type==="unload_started"){txt="unload started"; c="#3D5A4A";}
+    if(txt) marks.push({t,txt:short(row.occurred_local)+" "+txt,c}); }
+  marks.push({t:fe,txt:short(fmt(clock.event.payload.free_time_ends_at,d))+" free time ends",c:"#B42318"});
+  marks.sort((a,b)=>a.t-b.t);
+  const lastAt={true:-99,false:-99}; const shown=[];
+  for(const m of marks){ const p=pos(m.t); if(p-lastAt[!low]>=9){ low=!low; } else if(p-lastAt[low]<9){ continue; } lastAt[low]=p; shown.push(m); r.append(el("div",{class:"m"+(low?" low":""),style:`left:${pos(m.t)}%`},[low?"":m.txt, el("i",{style:`background:${m.c}`}), low?m.txt:""])); }
+  r.append(el("div",{class:"now",style:`left:${pos(now)}%`}));
+}
+function fmt(iso,d){ const row=d.events.find(r=>r.event.occurred_at===iso); if(row) return row.occurred_local; return new Date(iso).toLocaleTimeString("en-US",{timeZone:d.load.timezone,hour:"numeric",minute:"2-digit"})+" ET"; }
+const PARTY={shipper:{who:"Shipper · Sam Okonkwo, Northwind Orchards",say:"What Dock says when Sam calls in (the outbound heads-up)"},consignee:{who:"Consignee · Priya Shah, Harbor & Rye DC",say:"What Dock says when Priya calls in (the outbound heads-up)"}};
+function party(d, role){
+  const s=d.summary, col=document.getElementById(role), P=PARTY[role];
+  const notices=d.events.filter(r=>r.event.type==="notice_sent"&&r.event.payload.to_role===role);
+  const calls=d.events.filter(r=>r.event.type==="call_result"&&r.event.payload.to_role===role);
+  const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},[P.who]),el("span",{class:"lbl"},[short(d.clock_local)])]),
+    el("span",{class:"stamp p-"+s.phase},[stampFor(s)]),
+    el("div",{},[el("div",{class:"h"},["$"+s.estimated_charge_usd+(s.phase==="closed"?" supported":" so far")]), el("div",{class:"muted",style:"margin-top:6px"},[s.free_time_ends_local?["Charges start at ",el("b",{},[s.free_time_ends_local])," if door 4 is still closed."].flat():"No clock yet."].flat())]),
+    el("div",{class:"lbl"},[P.say]),
+    el("div",{class:"sms voice"},[d.heads_up[role]])];
+  if(calls.length){ const c=calls[calls.length-1]; kids.push(el("div",{class:"card amber"},[el("div",{class:"lbl"},[`On the call · ${short(c.occurred_local)}`]),el("div",{style:"margin-top:6px"},["“"+c.event.payload.summary+"”"])])); }
+  kids.push(el("div",{class:"lbl"},["Heads-ups on the trail"]));
+  if(!notices.length) kids.push(el("div",{class:"empty"},["None yet. Dock warns 30 minutes before free time ends."]));
+  for(const r of notices.slice(-2).reverse()) kids.push(el("div",{class:"sms"+(r.event.payload.channel==="voice"?" voice":"")},[el("div",{class:"meta"},[`${short(r.occurred_local)} · ${r.event.payload.channel} · ${r.event.payload.delivery_status}`]), r.event.payload.body]));
+  kids.push(el("div",{class:"card amber",style:"margin-top:auto"},[el("div",{class:"lbl",style:"color:#A15C07"},["The one thing that stops the charge"]),el("div",{style:"font-size:14px;margin-top:6px"},[s.how_to_avoid])]));
+  col.replaceChildren(...kids);
+}
+function shipper(d){ party(d,"shipper"); party(d,"consignee"); }
+function carrier(d){
+  const s=d.summary, col=document.getElementById("carrier");
+  const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},["Carrier · Luis Ortega, truck 1841"]),el("span",{class:"lbl"},[short(d.clock_local)])]),
+    el("span",{class:"stamp p-"+s.phase},[s.stamp]),
+    el("div",{},[el("div",{class:"h",style:s.phase==="accruing"?"color:#B42318":""},[s.headline]), el("div",{class:"muted",style:"margin-top:6px"},[s.detail])])];
+  const calls=d.events.filter(r=>r.event.type==="call_result");
+  if(calls.length){ const c=calls[calls.length-1]; kids.push(el("div",{class:"card "+(s.phase==="accruing"?"red":"amber")},[el("div",{class:"lbl"},[`Last call · ${short(c.occurred_local)}`]),el("div",{style:"margin-top:6px"},[c.line])])); }
+  kids.push(el("div",{class:"lbl"},["Trail · newest first"]));
+  const rows=facts(d).slice().reverse().slice(0,7); if(!rows.length) kids.push(el("div",{class:"empty"},["Nothing yet. Call the Dock line and say you're the driver."]));
+  for(const r of rows) kids.push(ev(r));
+  const box=el("textarea",{placeholder:"Text as Luis, the driver",oninput:e=>S.draft=e.target.value}); box.value=S.draft;
+  const chips=el("div",{class:"row"}); for(const p of d.driver_prompts) chips.append(el("button",{class:"chip",onclick:()=>{S.draft=p;box.value=p;}},[p]));
+  const presets=el("div",{class:"row"}); for(const p of d.presets) presets.append(el("button",{class:"btn",onclick:()=>load("/api/live/as-of",{preset:p.id})},[p.label]));
+  presets.append(el("button",{class:"btn",onclick:()=>{ if(confirm("Start a new live run? The current log is archived, not deleted.")) load("/api/live/reset",{}); }},["New run"]));
+  kids.push(el("div",{style:"margin-top:auto;display:flex;flex-direction:column;gap:8px"},[el("div",{class:"lbl"},["Driver SMS"]),chips,box,el("div",{class:"row"},[el("button",{class:"btn pri",onclick:async()=>{ await load("/api/live/driver",{text:S.draft}); if(!S.err){S.draft="";} render(); }},["Log driver SMS"])]),el("div",{class:"lbl"},["Demo clock"]),presets]));
+  col.replaceChildren(...kids);
+}
+function broker(d){
+  const s=d.summary, col=document.getElementById("broker");
+  const pack=facts(d).filter(r=>["arrived","delay_reported","notice_sent","call_result","unload_started","unload_done"].includes(r.event.type) && !(r.event.type==="notice_sent"&&r.event.payload.channel==="sms"&&r.event.payload.to_role==="consignee"));
+  const pol=d.policy, over=Math.max(0,(s.elapsed_minutes||0)-pol.free_minutes);
+  const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},["Broker · Alex Kim, Lantern Lane"]),el("span",{class:"lbl"},[short(d.clock_local)])]),
+    el("span",{class:"stamp p-"+s.phase},[s.phase==="closed"?"CLOCK STOPPED":s.stamp]),
+    el("div",{},[el("div",{class:"h"},["$"+s.estimated_charge_usd+(s.phase==="closed"?" supported":" on the trail")]),
+      el("div",{class:"math",style:"margin-top:8px"},[s.billable_minutes?`${over} min past free time → ${s.billable_minutes} min billed · ${s.billable_minutes} / 60 × $${pol.rate_usd_per_hour} = $${s.estimated_charge_usd}`:`${pol.free_minutes} min free, then $${pol.rate_usd_per_hour}/h in ${pol.increment_minutes}-min steps`])]),
+    el("div",{class:"lbl"},["Proof pack · every line is a timestamped event"])];
+  if(!pack.length) kids.push(el("div",{class:"empty"},["Empty until the driver checks in."]));
+  for(const r of pack) kids.push(ev(r));
+  kids.push(el("div",{style:"margin-top:auto;border-top:1px solid #1A1A1A;padding-top:10px;display:flex;justify-content:space-between;align-items:center"},[el("span",{class:"mono",style:"font-size:12px"},["This is not an invoice."]),el("button",{class:"btn",onclick:()=>{const b=new Blob([d.proof_markdown],{type:"text/markdown"});const a=el("a",{href:URL.createObjectURL(b),download:d.load.load_id+"-trail.md"});a.click();}},["Export trail .md"])]));
+  col.replaceChildren(...kids);
+}
+load(); setInterval(()=>{ if(document.activeElement && document.activeElement.tagName==="TEXTAREA") { api("/api/live").then(x=>{S.desk=x; const ta=document.activeElement; rail(x); shipper(x); broker(x); document.getElementById("now").textContent=x.clock_local; for(const r of x.events) S.seen.add(r.event.event_id);}).catch(()=>{}); return; } load(); }, 1500);
+</script>
+</body>
+</html>

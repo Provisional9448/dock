@@ -108,7 +108,10 @@ class Desk:
         load = self.context["load"]
         zone = load["timezone"]
         summary = _summary(ordered, as_of, zone)
-        markdown = render_markdown(ordered, load["load_id"])
+        try:
+            markdown = render_markdown(ordered, load["load_id"])
+        except ValueError:
+            markdown = f"# {load['load_id']}\n\nNo events yet.\n"
         active = next((item["id"] for item in PRESETS if parse_time(item["as_of"]) == as_of), None)
         return {
             "runtime_mode": self.runtime_log is not None,

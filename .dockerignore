@@ -1,0 +1,5 @@
+.venv
+data/runtime
+.git
+**/__pycache__
+notes

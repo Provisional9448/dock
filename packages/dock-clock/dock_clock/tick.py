@@ -195,11 +195,25 @@ def _first(facts: list[Event], event_type: str) -> Event | None:
 
 
 def _timezone(facts: list[Event]) -> str:
-    for event in facts:
-        zone = event.payload.get("timezone")
-        if isinstance(zone, str) and zone:
+    """Facility zone from the arrival the anchor uses."""
+    arrived = _first(facts, "arrived")
+    if arrived is not None:
+        zone = _zone_of(arrived)
+        if zone is not None:
+            return zone
+    ordered = sorted(facts, key=lambda event: (parse_time(event.occurred_at), event.event_id))
+    for event in ordered:
+        zone = _zone_of(event)
+        if zone is not None:
             return zone
     return "America/New_York"
+
+
+def _zone_of(event: Event) -> str | None:
+    zone = event.payload.get("timezone")
+    if isinstance(zone, str) and zone:
+        return zone
+    return None
 
 
 def _load_ids(events: list[Event]) -> list[str]:

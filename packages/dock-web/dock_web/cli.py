@@ -16,18 +16,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8741)
     parser.add_argument("--root", default=None, help="Repo root. Defaults to an ancestor that contains data/samples.")
-    parser.add_argument("--runtime-log", help="Read confirmed inbound facts from this JSONL file; disable sample edits.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--runtime-log", help="Read confirmed inbound facts from this JSONL file; disable sample edits.")
+    mode.add_argument("--live", action="store_true", help="Open the separate scripted live/replay desk.")
     parser.add_argument("--as-of", default="2026-10-17T19:36:00Z", help="Runtime demo clock, UTC (not the wall clock).")
     args = parser.parse_args(argv)
     try:
         root = Path(args.root) if args.root else _repo_root()
-        desk = Desk.from_runtime(root, Path(args.runtime_log), args.as_of) if args.runtime_log else Desk.from_repo(root)
-        httpd = serve(desk, args.host, args.port)
+        if args.runtime_log:
+            desk = Desk.from_runtime(root, Path(args.runtime_log), args.as_of)
+            httpd = serve(desk, args.host, args.port)
+        else:
+            from dock_web.live import LiveDesk, LiveRun
+
+            desk = Desk.from_repo(root)
+            live = LiveDesk(LiveRun(root))
+            httpd = serve(desk, args.host, args.port, live=live, home="live" if args.live else "sample")
     except (OSError, ValueError) as exc:
         print(f"dock-web: {exc}", file=sys.stderr)
         return 1
     shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    print(f"Dock desk at http://{shown}:{args.port}", flush=True)
+    view = "read-only inbound evidence" if args.runtime_log else "live: /live, sample: /sample"
+    print(f"Dock desk at http://{shown}:{args.port}  ({view})", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

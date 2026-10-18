@@ -54,6 +54,20 @@ This address is on Zo, not your laptop. A reachable private browser surface must
 
 Without --runtime-log, the original Saturday sample demo remains available. Its text box uses the original limited rules and is separate from the structured inbound agent. Do not use that fixture mode as proof of real calls.
 
+## Combined demo launcher
+
+After checking the included inbound allowance, use the guarded launcher to start the phone listener and its read-only desk in separate tmux sessions:
+
+```bash
+DOCK_INBOUND_MODE=live ./scripts/demo-up.sh
+```
+
+It runs `uv sync --frozen`, seeds through `dock-inbound status`, then starts `dock-web --runtime-log` and `dock-voice serve` against the same `DOCK_INBOUND_LOG`. The default log is `data/runtime/inbound-demo.jsonl`; `DOCK_INBOUND_AS_OF` defaults to `2026-10-17T19:36:00Z`. Override both for a fresh rehearsal. The web server binds Zo loopback on `PORT` (default 8741).
+
+Keep Guava credentials and `GUAVA_AGENT_NUMBER` in your existing Guava login/runtime configuration or the private shell file `~/.config/dock/env.sh` (`DOCK_ENV` overrides that path). The tmux commands source that file themselves. Do not put secrets in Git. The launcher requires an explicit `DOCK_INBOUND_MODE=live` before sourcing configuration; it refuses existing `dockweb` or `dockvoice` sessions rather than killing them. It does not retry failed listeners. Inspect `/tmp/dockweb.log` and `/tmp/dockvoice.log` for readiness; creating a tmux session alone does not prove a live connection.
+
+There is no launcher `replay` option. `dock-live replay` is a separate scripted simulation using its separate `live.jsonl` log; never direct it into the shared inbound log or present its scripted events as real call evidence.
+
 ## Two rehearsals
 
 1. Call and ask for LL-88421. Check the agent states last reported status and admits no confirmed ETA. Report that unloading has **not** started and an expected start is “in 20 minutes.” Listen to the readback and confirm it. Refresh evidence: still waiting, expectation separate, clock not stopped.

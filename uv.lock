@@ -11,6 +11,7 @@ members = [
     "dock-intake",
     "dock-notify",
     "dock-proof",
+    "dock-voice",
     "dock-web",
 ]
 
@@ -65,6 +66,7 @@ dependencies = [
     { name = "dock-intake" },
     { name = "dock-notify" },
     { name = "dock-proof" },
+    { name = "dock-voice" },
     { name = "dock-web" },
     { name = "guava-sdk" },
 ]
@@ -82,6 +84,7 @@ requires-dist = [
     { name = "dock-intake", editable = "packages/dock-intake" },
     { name = "dock-notify", editable = "packages/dock-notify" },
     { name = "dock-proof", editable = "packages/dock-proof" },
+    { name = "dock-voice", editable = "packages/dock-voice" },
     { name = "dock-web", editable = "packages/dock-web" },
     { name = "guava-sdk", specifier = ">=0.48" },
 ]
@@ -152,6 +155,30 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "dock-events", editable = "packages/dock-events" }]
+
+[[package]]
+name = "dock-voice"
+version = "0.1.0"
+source = { editable = "packages/dock-voice" }
+dependencies = [
+    { name = "dock-events" },
+    { name = "dock-intake" },
+    { name = "dock-web" },
+]
+
+[package.optional-dependencies]
+live = [
+    { name = "guava-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dock-events", editable = "packages/dock-events" },
+    { name = "dock-intake", editable = "packages/dock-intake" },
+    { name = "dock-web", editable = "packages/dock-web" },
+    { name = "guava-sdk", marker = "extra == 'live'", specifier = ">=0.48" },
+]
+provides-extras = ["live"]
 
 [[package]]
 name = "dock-web"
