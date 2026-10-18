@@ -172,8 +172,10 @@ def test_storage_failure_does_not_claim_saved():
 def test_transit_report_and_ambiguous_time_do_not_write():
     session, agent, call = setup()
     begin_report(agent, call, state='outside_scope', detail='Traffic jam')
-    assert call.task_id.startswith('offer_')
+    assert call.task_id.startswith('escalate_')
     assert session.reports == []
+    complete(agent, call, consent='continue')
+    complete(agent, call, action='continue')
     complete(agent, call, action='report')
     complete(agent, call, state='unloading_started', time='yesterday', detail='started yesterday')
     assert call.retries
@@ -275,7 +277,7 @@ def test_human_before_load_disabled_is_honest_and_does_not_save():
     complete(agent, call, action='human')
     assert gate.calls == [call.id]
     assert call.get_variable('dock_load') is None
-    assert call.task_id.startswith('identify_')
+    assert call.task_id.startswith('recover_')
     assert session.reports == []
     assert any('not enabled' in text for text in call.instructions)
 
@@ -305,7 +307,7 @@ def test_unavailable_handoff_resumes_assistance_without_promises(status):
     session, agent, call, gate = handoff_setup(status)
     complete(agent, call, load='LL-88421')
     complete(agent, call, action='human')
-    assert call.task_id.startswith('offer_')
+    assert call.task_id.startswith('recover_')
     assert session.reports == []
     assert any('no callback is promised' in text for text in call.instructions)
 
@@ -336,6 +338,103 @@ def test_gate_storage_failure_is_unavailable_and_drops_pending():
     gate.request = fail
     complete(agent, call, confirmation='human')
     assert call.get_variable('dock_pending') is None
-    assert call.task_id.startswith('offer_')
+    assert call.task_id.startswith('recover_')
     assert ('Human handoff result', {'status': 'unavailable'}) in call.infos
     assert session.reports == []
+
+
+@pytest.mark.parametrize('consent', ['yes', 'no', 'continue', 'finish'])
+def test_missing_load_offers_fresh_consent_before_any_transfer(consent):
+    session, agent, call, gate = handoff_setup('requested')
+    complete(agent, call, action='unresolved', blocker='missing_load')
+    assert call.task_id.startswith('escalate_')
+    assert gate.calls == []
+    complete(agent, call)  # Missing fresh consent never requests transfer.
+    assert gate.calls == []
+    complete(agent, call, consent=consent)
+    assert gate.calls == ([call.id] if consent == 'yes' else [])
+    assert session.reports == []
+    if consent == 'finish':
+        assert call.get_variable('dock_task') == 'finished'
+
+
+def test_searching_for_load_is_not_unresolved():
+    session, agent, call, gate = handoff_setup()
+    original = call.task_id
+    complete(agent, call, action='shipment')
+    assert call.task_id == original
+    assert gate.calls == []
+    assert not call.get_variable('dock_escalation_offered')
+
+
+def test_unknown_load_gets_only_one_correction_then_escalation():
+    session, agent, call, gate = handoff_setup()
+    first = complete(agent, call, load='BAD-1')
+    assert call.task_id.startswith('identify_')
+    agent.handlers['complete'](call, first)  # Repeated callback cannot consume correction.
+    assert call.get_variable('dock_unknown_attempts') == 1
+    complete(agent, call, load='BAD-2')
+    assert call.task_id.startswith('escalate_')
+    assert gate.calls == []
+    assert session.reports == []
+
+
+def test_corrected_unknown_load_still_resolves_normally():
+    session, agent, call, gate = handoff_setup()
+    complete(agent, call, load='BAD')
+    complete(agent, call, load='LL-88421')
+    assert call.get_variable('dock_load') == 'LL-88421'
+    assert call.task_id.startswith('offer_')
+    assert gate.calls == []
+
+
+def test_identify_tool_error_offers_consent_and_question_failure_is_readonly():
+    session, agent, call, gate = handoff_setup()
+    def fail(load):
+        raise OSError('private path')
+    session.status = fail
+    complete(agent, call, load='LL-88421')
+    assert call.task_id.startswith('escalate_')
+    assert gate.calls == []
+    call.set_variable('dock_load', 'LL-88421')
+    task_id = call.task_id
+    answer = agent.handlers['question'](call, 'where is it')
+    assert 'tool_failure' in answer
+    assert 'private path' not in answer
+    assert call.task_id == task_id
+    assert gate.calls == []
+    assert session.reports == []
+
+
+@pytest.mark.parametrize('first_consent', ['no', 'yes'])
+def test_same_blocker_not_reoffered_after_denial_or_unavailable(first_consent):
+    session, agent, call, gate = handoff_setup('unavailable')
+    complete(agent, call, action='unresolved', blocker='missing_load')
+    complete(agent, call, consent=first_consent)
+    assert call.task_id.startswith('recover_')
+    complete(agent, call, action='continue')
+    complete(agent, call, action='unresolved', blocker='missing_load')
+    assert call.task_id.startswith('recover_')
+    assert len(gate.calls) == (1 if first_consent == 'yes' else 0)
+    complete(agent, call, action='finish')
+    assert call.get_variable('dock_task') == 'finished'
+    assert session.reports == []
+
+
+def test_outside_authority_requires_consent_and_no_report_save():
+    session, agent, call, gate = handoff_setup()
+    complete(agent, call, load='LL-88421')
+    complete(agent, call, action='unresolved', blocker='outside_authority')
+    assert call.task_id.startswith('escalate_')
+    assert gate.calls == []
+    assert session.reports == []
+
+
+def test_recovery_uses_newly_found_load_without_reasking():
+    session, agent, call, gate = handoff_setup()
+    complete(agent, call, action='unresolved', blocker='missing_load')
+    complete(agent, call, consent='no')
+    complete(agent, call, action='continue', load='LL-88421')
+    assert call.get_variable('dock_load') == 'LL-88421'
+    assert call.task_id.startswith('offer_')
+    assert gate.calls == []

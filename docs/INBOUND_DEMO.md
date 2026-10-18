@@ -116,3 +116,28 @@ sessions with fake gate outcomes exercised a human request before a load number,
 disabled transfer, and repeated requests after submission. The final pending-case
 transcript retained uncertainty about the connection and invoked the fake gate once;
 no shipment events changed. No real transfer or answer/no-answer handling was tested.
+
+
+## Unresolved requests
+
+The voice model interprets the caller's meaning using structured task choices, not
+keyword or regex intent matching. If the caller cannot supply a shipment number,
+there is no supported alternate lookup in this demo: explain that limitation and
+offer a human. Do not collect names or addresses pretending they can be searched.
+If the caller is still looking for the number, wait. For an unknown number, allow
+one correction before offering escalation. Tool failures and requests requiring
+human authority can also lead to an offer; uncertainty alone is not proof of a
+blocker.
+
+An offered escalation requires a separate caller acceptance before invoking the
+handoff gate. Declining the offer must not transfer or cause repeated offers for
+the same blocker. The caller can continue, supply a number later, explicitly ask
+for a human, or end the call. Existing availability and attempt limits still apply;
+no callback or successful connection is promised. Pending reports are not saved.
+
+Verification: 121 offline tests pass. Hosted text tests with a fake handoff gate
+verify missing-number routing and fresh consent before one request, refusal without
+a request, and waiting for a number followed by a status lookup. Traced callbacks
+confirm the acceptance goes through identification and a separate consent task.
+Shipment event logs remain unchanged. These are model-driven text checks, not a
+real phone-transfer test; live handoff remains disabled.
