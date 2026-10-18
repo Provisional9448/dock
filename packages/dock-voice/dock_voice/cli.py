@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROLEPLAYS = {
     "driver": (
-        "Open with: Driver. Hi, this is Luis. You are Luis Ortega, a truck driver for Red Kettle Freight, truck 1841, on load LL-88421 at Harbor and Rye "
+        "Open with exactly: 'Driver. Hi, this is Luis with Red Kettle Freight, load LL-88421. I checked in at the Harbor and Rye receiving window at 2:06, and Dana the clerk told me to wait in my truck, maybe 40 minutes.' You are Luis Ortega, a truck driver for Red Kettle Freight, truck 1841, on load LL-88421 at Harbor and Rye "
         "Grocery DC. You checked in at the receiving window at 2:06 PM. Dana at the window said no doors are open, "
         "wait in your truck, they'll call you, maybe 40 minutes. You are calling Dock so your check-in time and what "
         "they told you are on the record. You do not need directions. Say you're the driver. When asked, say you "

@@ -137,6 +137,25 @@ def local_snapshot(context: dict, facts: list[Event], now: datetime) -> dict:
     return snap
 
 
+def mirror(run, events: list[Event], label: str = "driver") -> bool:
+    """Best effort copy to a second desk (DOCK_MIRROR_URL, e.g. the public Railway desk) with the same demo
+    clock. The local log stays the source of truth; a failure here is logged and ignored."""
+    url = os.environ.get("DOCK_MIRROR_URL", "").strip()
+    if not url or not events:
+        return False
+    try:
+        from dock_web.live import _Remote
+
+        remote = _Remote(url, os.environ.get("DOCK_WRITE_TOKEN", ""))
+        remote.set_offset(run.offset())
+        remote.append(list(events))
+        log.info("%s events mirrored to %s", label, url)
+        return True
+    except Exception as exc:
+        log.warning("%s mirror to %s failed (%s); local desk unaffected", label, url, exc)
+        return False
+
+
 def post_later(run, events: list[Event], label: str = "driver", write=None) -> threading.Thread:
     """Write to the shared log off the call's thread. On failure, keep the events in a local spool file so
     nothing said on a call is lost, and log why (e.g. desk 403: DOCK_WRITE_TOKEN differs between box and desk)."""
@@ -146,6 +165,7 @@ def post_later(run, events: list[Event], label: str = "driver", write=None) -> t
         try:
             appended = write(events)
             log.info("%s events posted: %s", label, [getattr(e, "type", e) for e in appended or []])
+            mirror(run, [e for e in (appended or events) if isinstance(e, Event)], label)
         except Exception as exc:
             spool = Path(os.environ.get("DOCK_SPOOL", run.root / "data" / "runtime" / "voice-spool.jsonl"))
             try:

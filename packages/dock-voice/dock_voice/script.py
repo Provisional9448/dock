@@ -89,7 +89,7 @@ def money_line(snap: dict) -> str:
     if s["phase"] in ("running", "warning"):
         return (
             f"Free time ends at {s['free_time_ends_local']}, {span_words(s['remaining_free_minutes'])} from now. "
-            f"No charges yet; detention is ${per_hour} an hour after {s['free_time_ends_local']}, {steps}."
+            f"No charges yet; after that it's ${per_hour} an hour, {steps}."
         )
     if s["phase"] == "accruing":
         return (
@@ -192,27 +192,28 @@ def parse_clock(answer: object, now: datetime, zone: str, *, ahead_minutes: int 
 
 
 def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
-    """Exactly what the line says back to the driver after logging. Literal text, spoken verbatim."""
+    """Exactly what the line says back to the driver after logging. Literal text, spoken verbatim, kept short
+    (take 3's read-back ran ~30 seconds). Ends with 'Anything else?'."""
     r = record or {}
     at = r.get("at_local") or snap["clock_local"]
     said_by = r.get("said_by") or "The receiver"
-    promise = f" {said_by} said: {r['said']}." if r.get("said") else ""
-    eta = f" That's about {r['estimate_minutes']} minutes, around {r['eta_local']}." if r.get("estimate_minutes") and r.get("eta_local") else ""
+    if r.get("estimate_minutes") and r.get("eta_local"):
+        promise = f" {said_by} said about {r['estimate_minutes']} minutes, so around {r['eta_local']}."
+    elif r.get("said"):
+        promise = f" {said_by} said: {r['said']}."
+    else:
+        promise = ""
     if status == "arrived":
         text = (
-            f"Logged. You checked in at the receiving window at {at}.{promise}{eta} {money_line(snap)} "
-            "It's on the load record with timestamps, and Dock will warn the shipper and the broker before free "
-            "time runs out. Call back when they give you a new time or start unloading."
+            f"Logged: checked in at {at}.{promise} {money_line(snap)} "
+            "Dock will warn the shipper and the broker before then. Anything else?"
         )
     elif status == "waiting":
-        text = (
-            f"Logged at {at}: still waiting.{promise}{eta} {money_line(snap)} The shipper and the broker get a "
-            "heads-up before any charge starts. Call back when they start unloading."
-        )
+        text = f"Logged at {at}: still waiting.{promise} {money_line(snap)} Anything else?"
     elif status == "unload_started":
-        text = f"Logged: unloading started at {at}. {money_line(snap)}"
+        text = f"Logged: unloading started at {at}. {money_line(snap)} Anything else?"
     else:
-        text = f"Logged: unload finished at {at}. Thanks, Luis."
+        text = f"Logged: unload finished at {at}. Anything else?"
     return spoken(text)
 
 

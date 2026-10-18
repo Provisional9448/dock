@@ -10,7 +10,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ENV="${DOCK_ENV:-$HOME/.config/dock/env.sh}"
 SRC="[ -f $ENV ] && . $ENV;"
-if [ "${DOCK_REMOTE:-0}" != "1" ]; then SRC="$SRC unset DOCK_LIVE_URL;"; fi
+# Local log is the source; the voice line mirrors its events to DOCK_LIVE_URL (best effort, off the call path).
+if [ "${DOCK_REMOTE:-0}" != "1" ]; then SRC="$SRC export DOCK_MIRROR_URL=\${DOCK_MIRROR_URL:-\${DOCK_LIVE_URL:-}}; unset DOCK_LIVE_URL;"; fi
 uv sync -q
 tmux kill-session -t dockweb 2>/dev/null || true
 tmux kill-session -t dockvoice 2>/dev/null || true

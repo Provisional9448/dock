@@ -152,32 +152,37 @@ def build_agent(run: LiveRun):
     def on_question(call: guava.Call, question: str) -> str:
         return answer_question(desk.snapshot(), question)
 
+    def close_call(call: guava.Call, role: str) -> None:
+        """One closing line, then hang up. The SDK has no hard hangup, so the final instruction allows nothing
+        else; the wrapup task also tells the model not to thank or say goodbye on its own."""
+        call.set_variable("closed", True)
+        call.hangup(
+            f"Your only remaining words are exactly: '{goodbye_line(role)}' Then hang up immediately. "
+            "Do not add thanks, 'have a safe trip', or a second goodbye."
+        )
+
     def wrap_up(call: guava.Call, readback: str) -> None:
         """Say the read-back, then ask 'anything else?' and wait for the answer before hanging up."""
         call.set_task(
             "wrapup",
             objective=(
-                "Read the record back exactly as written, then ask if there is anything else and wait for the "
-                "answer. Answer questions with Dock's numbers only. Do not give directions."
+                "Read the record back exactly as written; it ends by asking 'Anything else?'. Wait for the answer. "
+                "Answer questions with Dock's numbers only. Do not give directions. When the caller says there is "
+                "nothing else, do not reply, thank, or say goodbye: Dock closes the call with one fixed line."
             ),
             checklist=[
-                guava.Say(readback),
+                guava.Say(readback if readback.rstrip().endswith("Anything else?") else readback + " Anything else?"),
                 guava.Field(
                     key="anything_else",
                     field_type="text",
-                    description="The caller's answer. Write 'no' if there is nothing else.",
-                    question="Anything else?",
+                    description="The caller's answer to 'Anything else?'. Write 'no' if nothing else. Do not ask again.",
                 ),
             ],
         )
 
     @agent.on_task_complete("wrapup")
     def on_wrapup(call: guava.Call) -> None:
-        role = call.get_variable("role", "caller")
-        call.hangup(
-            f"Say exactly this once and nothing after it: '{goodbye_line(role)}' Do not say goodbye again. "
-            "The driver's name is Luis, never Louise."
-        )
+        close_call(call, call.get_variable("role", "caller"))
 
     @agent.on_task_complete("who")
     def on_who(call: guava.Call) -> None:
@@ -189,17 +194,12 @@ def build_agent(run: LiveRun):
                 "driver_report",
                 objective=(
                     "Put the driver's wait on the record. He has already checked in at the receiving window and "
-                    "was told to wait; do not give directions. Get the time, who at the receiver told him what, "
-                    "and their time estimate. For an unload start or finish, only the time is needed; skip the rest. "
-                    "Be quick; he is in the cab."
+                    "was told to wait; do not give directions. Fill every field you can from what he already said "
+                    "and only ask for what is missing. If his first sentence gave the check-in time and what the "
+                    "receiver told him, ask nothing and finish right away. Never ask who the clerk was. "
+                    "Never say 'one moment' or 'processing'."
                 ),
                 checklist=[
-                    guava.Field(
-                        key="status",
-                        field_type="multiple_choice",
-                        choices=list(DRIVER_STATUS),
-                        question="Are you checked in and waiting for a door, still waiting, or has the unload started or finished?",
-                    ),
                     guava.Field(
                         key="at",
                         field_type="text",
@@ -207,21 +207,33 @@ def build_agent(run: LiveRun):
                             "Clock time it happened, written like 2:06 PM: when he checked in at the receiving "
                             "window, or when the unload started or finished. For still waiting, write now."
                         ),
-                        question="What time did you check in at the receiving window? Or, what time did the unload start?",
-                        required=False,
-                    ),
-                    guava.Field(
-                        key="said_by",
-                        field_type="text",
-                        description="Who at the receiver told him, name or role, like 'Dana at the receiving window'.",
-                        question="Who told you to wait?",
+                        question="What time did you check in?",
                         required=False,
                     ),
                     guava.Field(
                         key="said",
                         field_type="text",
-                        description="What the receiver told him, close to their words, including any time estimate.",
-                        question="What did they tell you, and how long did they say?",
+                        description="What the receiver told him, close to his words, including any time estimate.",
+                        question="What did they tell you, and how long?",
+                        required=False,
+                    ),
+                    guava.Field(
+                        key="status",
+                        field_type="multiple_choice",
+                        choices=list(DRIVER_STATUS),
+                        description=(
+                            "Infer from what he said: checked in and told to wait means 'checked in, waiting for "
+                            "a door'. Ask only if it is truly unclear."
+                        ),
+                        question="Are you waiting for a door, or has the unload started?",
+                    ),
+                    guava.Field(
+                        key="said_by",
+                        field_type="text",
+                        description=(
+                            "Fill ONLY if he already named who told him (e.g. 'Dana', 'the clerk'). Never ask for it; "
+                            "leave blank otherwise."
+                        ),
                         required=False,
                     ),
                 ],

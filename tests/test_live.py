@@ -135,7 +135,7 @@ def test_agent_handlers_with_mockcall(run):
         "estimate_minutes": 40, "eta_local": "2:46 PM ET"})
     assert "2:06 PM Eastern" in readback and "4:06 PM Eastern" in readback and "2:46 PM Eastern" in readback
     assert " ET" not in readback and "1 hour 58 minutes from now" in readback
-    assert "No charges yet; detention is $75 an hour after 4:06 PM Eastern" in readback
+    assert "No charges yet; after that it's $75 an hour, charged in 15-minute steps" in readback
     agent._on_task_complete_handlers["wrapup"](driver)
     assert "hang up" in driver._command_queue[-1].instruction
 
@@ -329,4 +329,53 @@ def test_wrapup_says_goodbye_once_with_luis(run):
     agent._on_task_complete_handlers["wrapup"](call)
     final = call._command_queue[-1].instruction
     assert "Thanks, Luis. It's all on the load record. Goodbye." in final
-    assert "Do not say goodbye again" in final
+    assert "Do not add thanks" in final and final.count("Goodbye.") == 1
+
+
+def test_take3_read_back_is_short_and_clerk_is_never_asked(run):
+    """Take 3: Doc asked 'who was the clerk?' after the opening line already had the time and the 40 minutes,
+    and the read-back ran ~30 s. The read-back is now a few short sentences ending in 'Anything else?'."""
+    from guava.testing import MockCall
+
+    from dock_voice.agent import build_agent
+
+    run.set_now(parse_time("2026-10-17T18:08:00Z"))
+    log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
+    rec = {"at_local": "2:06 PM ET", "said_by": "Dana", "said": "wait in the truck, maybe 40 minutes",
+           "estimate_minutes": 40, "eta_local": "2:46 PM ET"}
+    text = driver_readback(LiveDesk(run).snapshot(), "arrived", rec)
+    assert text.startswith("Logged: checked in at 2:06 PM Eastern.") and text.endswith("Anything else?")
+    assert len(text.split()) <= 60, len(text.split())
+    assert "02:" not in text and "Louise" not in text
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    call = MockCall()
+    call.set_field("role", "driver")
+    agent._on_task_complete_handlers["who"](call)
+    task = next(c for c in call._command_queue if type(c).__name__ == "SetTaskCommand")
+    dumped = task.model_dump_json()
+    assert "Never ask who the clerk was" in dumped
+    assert "Who told you" not in dumped
+
+
+def test_mirror_to_second_desk_is_best_effort(run, tmp_path, monkeypatch):
+    from dock_voice.record import build_driver_events, mirror, post_later
+
+    monkeypatch.setenv("DOCK_WRITE_TOKEN", "t0k")
+    other = LiveRun(ROOT, runtime=tmp_path / "railway")
+    server = serve(Desk.from_repo(ROOT), "127.0.0.1", 0, live=LiveDesk(other), home="live")
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        monkeypatch.setenv("DOCK_MIRROR_URL", f"http://127.0.0.1:{server.server_address[1]}")
+        run.set_now(parse_time("2026-10-17T18:08:00Z"))
+        events, _rec, _base, _now = build_driver_events(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
+        post_later(run, events, "driver").join(5)
+        assert [e.type for e in run.read()] == ["arrived", "delay_reported"]
+        assert [e.type for e in other.read()] == ["arrived", "delay_reported"]
+        assert LiveDesk(other).snapshot()["summary"]["phase"] == "running"
+        monkeypatch.setenv("DOCK_MIRROR_URL", "http://127.0.0.1:9")  # nothing listening
+        assert mirror(run, events) is False  # logged, never raised
+    finally:
+        server.shutdown()
