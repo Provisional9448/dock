@@ -24,7 +24,7 @@ def test_page_copy() -> None:
     assert "general information only" in HTML
     assert "Waiting time," in HTML
     assert 'src="hero.js"' in HTML
-    assert "Try the orb" in HTML
+    assert "Try the orb" not in HTML and 'id="talk"' in HTML and "data-webrtc-code" in HTML
     for phrase in (
         "Northwind Orchards",
         "Dan",
