@@ -32,7 +32,7 @@ def build_agent(run: LiveRun):
             "Dock is a detention desk for one fictional freight load, LL-88421: 18 pallets of citrus from Northwind "
             "Orchards in Fresno to Harbor and Rye Grocery DC, door 4, in Elizabeth, New Jersey. The driver is Luis "
             "Ortega, truck 1841, Red Kettle Freight. The broker is Lantern Lane Logistics. Drivers call to check in "
-            "and report delays. Shippers, receivers, and brokers call to hear the live detention clock. Keep every "
+            "and report delays. Shippers, consignees (the receiving DC), and brokers call to hear the live detention clock. Keep every "
             "answer short. Never invent numbers; use only what Dock's tools return."
         ),
         pronunciations={"LL-88421": "L L 8 8 4 2 1"},
@@ -48,8 +48,8 @@ def build_agent(run: LiveRun):
                 guava.Field(
                     key="role",
                     field_type="multiple_choice",
-                    choices=["driver", "shipper", "receiver", "broker"],
-                    question="Are you the driver, the shipper, the receiver, or the broker?",
+                    choices=["driver", "shipper", "consignee", "broker"],
+                    question="Are you the driver, the shipper, the consignee (the receiving DC), or the broker?",
                 )
             ],
         )
@@ -84,7 +84,7 @@ def build_agent(run: LiveRun):
             )
             return
         snap = desk.snapshot()
-        if role in ("shipper", "receiver"):
+        if role in ("shipper", "consignee"):
             heads_up = snap["heads_up"]["shipper" if role == "shipper" else "consignee"]
             call.set_variable("heads_up", heads_up)
             call.set_task(

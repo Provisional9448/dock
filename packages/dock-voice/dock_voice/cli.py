@@ -24,6 +24,12 @@ ROLEPLAYS = {
         "heads-up. When asked what you'll do, say you will call Harbor and Rye now and push them to start the "
         "unload within 20 minutes. Do not hang up until the agent says goodbye."
     ),
+    "consignee": (
+        "You are Priya Shah at Harbor and Rye Grocery DC, the consignee on load LL-88421. Answer only what the agent "
+        "asks, one short sentence per turn. When asked who you are, say you're the consignee. Listen to the heads-up. "
+        "When asked what you'll do, say door 4 is still occupied and you can start the unload in about 40 minutes. "
+        "Do not hang up until the agent says goodbye."
+    ),
     "broker": (
         "You are Alex Kim at Lantern Lane Logistics, the broker on load LL-88421. Say you're the broker and ask "
         "what the trail supports. Answer one short sentence per turn. Say no thanks to anything else. Do not hang up until the agent says goodbye."

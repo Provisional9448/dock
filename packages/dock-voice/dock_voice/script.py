@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-ROLES = ("driver", "shipper", "receiver", "broker")
+ROLES = ("driver", "shipper", "consignee", "broker")
 
 DRIVER_STATUS = {
     "arrived, waiting to unload": "arrived",
@@ -17,8 +17,8 @@ def pick_role(answer: object) -> str:
     for role in ROLES:
         if role in text:
             return role
-    if "consignee" in text or "dc" in text or "warehouse" in text:
-        return "receiver"
+    if any(word in text for word in ("receiver", "receiving", "dc", "warehouse", "harbor", "dock office")):
+        return "consignee"
     if "carrier" in text or "dispatch" in text or "truck" in text:
         return "driver"
     return "driver"
@@ -43,7 +43,7 @@ def driver_reply(snap: dict, status: str) -> str:
         return (
             f"Tell the driver he is logged at {snap['clock_local']}. Free time ends at {s['free_time_ends_local']}, "
             f"{s['remaining_free_minutes']} minutes from now, and the estimate is ${s['estimated_charge_usd']}. "
-            "Say Dock will give the shipper and the receiver a heads-up before any charge starts. Then say goodbye."
+            "Say Dock will give the shipper and the consignee a heads-up before any charge starts. Then say goodbye."
         )
     if status == "unload_started":
         return (

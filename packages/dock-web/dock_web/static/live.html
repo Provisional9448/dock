@@ -30,10 +30,11 @@ body{background:#F4F3EF;color:#1A1A1A;font-family:"IBM Plex Sans","Inter",system
 .m.low{top:40px}
 .m i{display:block;width:9px;height:9px;border-radius:50%;background:#1A1A1A;margin:17px auto 4px}
 .m.low i{margin:-24px auto 6px}
-.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:8px 28px 18px}
+.cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:8px 20px 18px}
+.tag{font-size:17px;font-weight:600;letter-spacing:-.01em;padding:12px 28px 0;color:#1A1A1A}
 .col{background:#FBFAF7;border:1px solid #CFCBC2;border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-height:560px}
 .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.h{font-size:36px;font-weight:600;letter-spacing:-.03em;line-height:1.05}
+.h{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.05}
 .sms{background:#ECE9E1;border-radius:12px 12px 12px 3px;padding:12px 14px;font-size:13.5px;line-height:1.45}
 .sms.voice{background:#E3EAF9}
 .sms .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#5F5B53;margin-bottom:4px}
@@ -58,7 +59,8 @@ textarea{width:100%;min-height:56px;border:1px solid #CFCBC2;border-radius:6px;b
 .foot{padding:0 28px 28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#5F5B53;font-size:12px}
 .pipe{font-family:"IBM Plex Mono",monospace;font-size:12px;background:#1A1A1A;color:#F4F3EF;padding:10px 14px;border-radius:6px;overflow:auto;white-space:pre}
 .empty{color:#5F5B53;font-style:italic}
-@media (max-width:1000px){.cols{grid-template-columns:1fr}.rail{display:none}}
+@media (max-width:1300px){.cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:800px){.cols{grid-template-columns:1fr}.rail{display:none}}
 </style>
 </head>
 <body>
@@ -71,9 +73,11 @@ textarea{width:100%;min-height:56px;border:1px solid #CFCBC2;border-radius:6px;b
   </div>
 </div>
 <div class="banner"><span id="banner">Loading…</span><span id="note" class="note"></span></div>
+<div class="tag">Shipper, consignee, broker, carrier — all on the same page.</div>
 <div class="rail" id="rail"></div>
 <div class="cols">
   <section class="col" id="shipper"></section>
+  <section class="col" id="consignee"></section>
   <section class="col" id="carrier"></section>
   <section class="col" id="broker"></section>
 </div>
@@ -93,7 +97,7 @@ function renderNote(){ const n=document.getElementById("note"); n.textContent=S.
 function facts(d){ return d.events.filter(r=>!["claim_drafted"].includes(r.event.type)); }
 function render(){
   const d=S.desk, s=d.summary, L=d.load;
-  document.getElementById("loadline").textContent=`${L.load_id} · ${L.reference} · ${L.commodity} · ${L.origin} → ${L.facility} · one event log, three views`;
+  document.getElementById("loadline").textContent=`${L.load_id} · ${L.reference} · ${L.commodity} · ${L.origin} → ${L.facility} · one event log, four parties`;
   document.getElementById("now").textContent=d.clock_local;
   document.getElementById("phone").textContent=d.agent_number?`Call Dock ${fmtPhone(d.agent_number)}`:"Voice line offline · use the SMS box";
   document.getElementById("banner").textContent=d.banner;
@@ -116,24 +120,29 @@ function rail(d){
     if(txt) marks.push({t,txt:short(row.occurred_local)+" "+txt,c}); }
   marks.push({t:fe,txt:short(fmt(clock.event.payload.free_time_ends_at,d))+" free time ends",c:"#B42318"});
   marks.sort((a,b)=>a.t-b.t);
-  for(const m of marks){ low=!low; r.append(el("div",{class:"m"+(low?" low":""),style:`left:${pos(m.t)}%`},[low?"":m.txt, el("i",{style:`background:${m.c}`}), low?m.txt:""])); }
+  const lastAt={true:-99,false:-99}; const shown=[];
+  for(const m of marks){ const p=pos(m.t); if(p-lastAt[!low]>=9){ low=!low; } else if(p-lastAt[low]<9){ continue; } lastAt[low]=p; shown.push(m); r.append(el("div",{class:"m"+(low?" low":""),style:`left:${pos(m.t)}%`},[low?"":m.txt, el("i",{style:`background:${m.c}`}), low?m.txt:""])); }
   r.append(el("div",{class:"now",style:`left:${pos(now)}%`}));
 }
 function fmt(iso,d){ const row=d.events.find(r=>r.event.occurred_at===iso); if(row) return row.occurred_local; return new Date(iso).toLocaleTimeString("en-US",{timeZone:d.load.timezone,hour:"numeric",minute:"2-digit"})+" ET"; }
-function shipper(d){
-  const s=d.summary, col=document.getElementById("shipper");
-  const notices=d.events.filter(r=>r.event.type==="notice_sent"&&r.event.payload.to_role==="shipper");
-  const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},["Shipper · Sam Okonkwo, Northwind Orchards"]),el("span",{class:"lbl"},[short(d.clock_local)])]),
+const PARTY={shipper:{who:"Shipper · Sam Okonkwo, Northwind Orchards",say:"What Dock says when Sam calls in (the outbound heads-up)"},consignee:{who:"Consignee · Priya Shah, Harbor & Rye DC",say:"What Dock says when Priya calls in (the outbound heads-up)"}};
+function party(d, role){
+  const s=d.summary, col=document.getElementById(role), P=PARTY[role];
+  const notices=d.events.filter(r=>r.event.type==="notice_sent"&&r.event.payload.to_role===role);
+  const calls=d.events.filter(r=>r.event.type==="call_result"&&r.event.payload.to_role===role);
+  const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},[P.who]),el("span",{class:"lbl"},[short(d.clock_local)])]),
     el("span",{class:"stamp p-"+s.phase},[stampFor(s)]),
-    el("div",{},[el("div",{class:"h"},["$"+s.estimated_charge_usd+" so far"]), el("div",{class:"muted",style:"margin-top:6px"},[s.free_time_ends_local?["Charges start at ",el("b",{},[s.free_time_ends_local])," if door 4 is still closed."].flat():"No clock yet."].flat())]),
-    el("div",{class:"lbl"},["What Dock says when Sam calls in (the outbound heads-up)"]),
-    el("div",{class:"sms voice"},[d.heads_up.shipper])];
+    el("div",{},[el("div",{class:"h"},["$"+s.estimated_charge_usd+(s.phase==="closed"?" supported":" so far")]), el("div",{class:"muted",style:"margin-top:6px"},[s.free_time_ends_local?["Charges start at ",el("b",{},[s.free_time_ends_local])," if door 4 is still closed."].flat():"No clock yet."].flat())]),
+    el("div",{class:"lbl"},[P.say]),
+    el("div",{class:"sms voice"},[d.heads_up[role]])];
+  if(calls.length){ const c=calls[calls.length-1]; kids.push(el("div",{class:"card amber"},[el("div",{class:"lbl"},[`On the call · ${short(c.occurred_local)}`]),el("div",{style:"margin-top:6px"},["“"+c.event.payload.summary+"”"])])); }
   kids.push(el("div",{class:"lbl"},["Heads-ups on the trail"]));
   if(!notices.length) kids.push(el("div",{class:"empty"},["None yet. Dock warns 30 minutes before free time ends."]));
-  for(const r of notices.slice(-3).reverse()) kids.push(el("div",{class:"sms"+(r.event.payload.channel==="voice"?" voice":"")},[el("div",{class:"meta"},[`${short(r.occurred_local)} · ${r.event.payload.channel} · ${r.event.payload.delivery_status}`]), r.event.payload.body]));
-  kids.push(el("div",{class:"card amber",style:"margin-top:auto"},[el("div",{class:"lbl",style:"color:#A15C07"},["The one thing that stops the charge"]),el("div",{style:"font-size:15px;margin-top:6px"},[s.how_to_avoid])]));
+  for(const r of notices.slice(-2).reverse()) kids.push(el("div",{class:"sms"+(r.event.payload.channel==="voice"?" voice":"")},[el("div",{class:"meta"},[`${short(r.occurred_local)} · ${r.event.payload.channel} · ${r.event.payload.delivery_status}`]), r.event.payload.body]));
+  kids.push(el("div",{class:"card amber",style:"margin-top:auto"},[el("div",{class:"lbl",style:"color:#A15C07"},["The one thing that stops the charge"]),el("div",{style:"font-size:14px;margin-top:6px"},[s.how_to_avoid])]));
   col.replaceChildren(...kids);
 }
+function shipper(d){ party(d,"shipper"); party(d,"consignee"); }
 function carrier(d){
   const s=d.summary, col=document.getElementById("carrier");
   const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},["Carrier · Luis Ortega, truck 1841"]),el("span",{class:"lbl"},[short(d.clock_local)])]),
@@ -153,7 +162,7 @@ function carrier(d){
 }
 function broker(d){
   const s=d.summary, col=document.getElementById("broker");
-  const pack=facts(d).filter(r=>["arrived","delay_reported","notice_sent","call_result","unload_started","unload_done"].includes(r.event.type) && !(r.event.type==="notice_sent"&&r.event.payload.to_role==="consignee"&&r.event.payload.channel==="sms"));
+  const pack=facts(d).filter(r=>["arrived","delay_reported","notice_sent","call_result","unload_started","unload_done"].includes(r.event.type) && !(r.event.type==="notice_sent"&&r.event.payload.channel==="sms"&&r.event.payload.to_role==="consignee"));
   const pol=d.policy, over=Math.max(0,(s.elapsed_minutes||0)-pol.free_minutes);
   const kids=[el("div",{class:"who"},[el("span",{class:"lbl"},["Broker · Alex Kim, Lantern Lane"]),el("span",{class:"lbl"},[short(d.clock_local)])]),
     el("span",{class:"stamp p-"+s.phase},[s.phase==="closed"?"CLOCK STOPPED":s.stamp]),

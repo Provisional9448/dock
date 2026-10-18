@@ -55,7 +55,7 @@ def replay(run: LiveRun, pause: float = 4.0, say=print) -> None:
         reply="Priya said door 4 is still occupied and they can start in about 40 minutes.",
         summary=snap["summary"],
     )
-    beat("Receiver call-in: Priya asked for about 40 minutes.")
+    beat("Consignee call-in: Priya asked for about 40 minutes.")
     desk.jump_preset("accruing")
     beat("15 minutes past free time. Accruing.")
     run.advance(27)

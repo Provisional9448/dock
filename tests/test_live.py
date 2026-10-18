@@ -53,7 +53,8 @@ def test_driver_cannot_check_in_twice(run):
 def test_role_and_status_mapping():
     assert pick_role("I'm the shipper") == "shipper"
     assert pick_role("Broker") == "broker"
-    assert pick_role("this is the DC") == "receiver"
+    assert pick_role("this is the DC") == "consignee"
+    assert pick_role("consignee") == "consignee"
     assert pick_status("unload started") == "unload_started"
     assert pick_status("we're done, empty") == "unload_done"
 

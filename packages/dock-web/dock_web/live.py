@@ -338,12 +338,14 @@ def heads_up_text(snap: dict, role: str) -> str:
         since = f" since {format_local(arrived['occurred_at'], load['timezone'])}"
     door = load.get("door", "the door")
     who = "Red Kettle's driver, Luis,"
+    where = f"your {door}" if role == "consignee" else f"Harbor and Rye {door}"
+    start = "If you start the unload" if role == "consignee" else "If the unload starts"
     if s["phase"] in ("running", "warning"):
         return (
             f"Heads-up on load {load['load_id']}, {load['reference']}. {who} has been waiting at "
-            f"Harbor and Rye {door}{since}. Free time ends at {s['free_time_ends_local']}, "
+            f"{where}{since}. Free time ends at {s['free_time_ends_local']}, "
             f"{s['remaining_free_minutes']} minutes from now. The detention estimate so far is "
-            f"${s['estimated_charge_usd']}. If the unload starts before {s['free_time_ends_local']}, it stays at zero."
+            f"${s['estimated_charge_usd']}. {start} before {s['free_time_ends_local']}, it stays at zero."
         )
     if s["phase"] == "accruing":
         return (
