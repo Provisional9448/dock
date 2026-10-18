@@ -64,7 +64,7 @@ class LiveRun:
             return 0.0
 
     def now(self) -> datetime:
-        return (self._wall() + timedelta(seconds=self.offset())).replace(microsecond=0)
+        return (self._wall() + timedelta(seconds=self.offset() + 0.5)).replace(microsecond=0)
 
     def set_now(self, moment: datetime) -> None:
         self.runtime.mkdir(parents=True, exist_ok=True)

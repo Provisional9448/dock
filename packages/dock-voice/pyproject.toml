@@ -1,0 +1,23 @@
+[project]
+name = "dock-voice"
+version = "0.1.0"
+description = "One inbound Guava line for Dock: drivers check in, shippers and brokers hear the live detention clock."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["dock-events", "dock-intake", "dock-web"]
+
+[project.optional-dependencies]
+live = ["guava-sdk>=0.48"]
+
+[project.scripts]
+dock-voice = "dock_voice.cli:main"
+dock-live = "dock_voice.replay:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+dock-intake = { workspace = true }
+dock-web = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
