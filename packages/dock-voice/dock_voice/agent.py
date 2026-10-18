@@ -24,6 +24,7 @@ from dock_voice.script import (
     parse_clock,
     parse_minutes,
     pick_role,
+    goodbye_line,
     pick_status,
     spoken,
 )
@@ -172,7 +173,11 @@ def build_agent(run: LiveRun):
 
     @agent.on_task_complete("wrapup")
     def on_wrapup(call: guava.Call) -> None:
-        call.hangup("Say: 'Thanks. It's all on the load record.' Then say goodbye.")
+        role = call.get_variable("role", "caller")
+        call.hangup(
+            f"Say exactly this once and nothing after it: '{goodbye_line(role)}' Do not say goodbye again. "
+            "The driver's name is Luis, never Louise."
+        )
 
     @agent.on_task_complete("who")
     def on_who(call: guava.Call) -> None:

@@ -301,3 +301,32 @@ def test_call_files_retry_until_guava_has_them(tmp_path):
 def test_parse_clock_spoken_digits():
     now = datetime(2026, 10, 17, 18, 8, tzinfo=timezone.utc)
     assert parse_clock("I checked in at 206", now, "America/New_York") == parse_time("2026-10-17T18:06:00Z")
+
+
+def test_spoken_polish_name_zero_and_steps(run):
+    from dock_voice.script import goodbye_line
+
+    assert spoken("Thanks, Louise. Checked in at 02:06 PM ET.") == "Thanks, Luis. Checked in at 2:06 PM Eastern."
+    assert goodbye_line("driver") == "Thanks, Luis. It's all on the load record. Goodbye."
+    assert goodbye_line("shipper").count("Goodbye") == 1 and "Luis" not in goodbye_line("shipper")
+    run.set_now(parse_time("2026-10-17T18:08:00Z"))
+    log_driver(run, "arrived", at=parse_time("2026-10-17T18:06:00Z"))
+    text = driver_readback(LiveDesk(run).snapshot(), "arrived", {"at_local": "2:06 PM ET"})
+    assert "charged in 15-minute steps" in text and "billed" not in text and "02:" not in text
+
+
+def test_wrapup_says_goodbye_once_with_luis(run):
+    from guava.testing import MockCall
+
+    from dock_voice.agent import build_agent
+
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    call = MockCall()
+    call.set_variable("role", "driver")
+    agent._on_task_complete_handlers["wrapup"](call)
+    final = call._command_queue[-1].instruction
+    assert "Thanks, Luis. It's all on the load record. Goodbye." in final
+    assert "Do not say goodbye again" in final

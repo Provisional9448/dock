@@ -61,6 +61,8 @@ def pick_status(answer: object) -> str:
 def spoken(text: str) -> str:
     """Text the line will say aloud: 'ET' is read as 'eat' by TTS, so say 'Eastern'; '$0.00' -> 'zero dollars'."""
     out = re.sub(r"\bET\b", "Eastern", text)
+    out = re.sub(r"\b0(\d):(\d\d)\b", r"\1:\2", out)  # '02:06' -> '2:06'
+    out = re.sub(r"\b(Louise|Lewis|Louis|Luiz)\b", "Luis", out)
     out = out.replace("$0.00", "zero dollars")
     return out
 
@@ -83,7 +85,7 @@ def money_line(snap: dict) -> str:
     s = snap["summary"]
     rate = snap["policy"]
     per_hour = str(rate["rate_usd_per_hour"]).removesuffix(".00")
-    steps = f"billed in {rate['increment_minutes']}-minute steps"
+    steps = f"charged in {rate['increment_minutes']}-minute steps"
     if s["phase"] in ("running", "warning"):
         return (
             f"Free time ends at {s['free_time_ends_local']}, {span_words(s['remaining_free_minutes'])} from now. "
@@ -212,6 +214,13 @@ def driver_readback(snap: dict, status: str, record: dict | None = None) -> str:
     else:
         text = f"Logged: unload finished at {at}. Thanks, Luis."
     return spoken(text)
+
+
+def goodbye_line(role: str) -> str:
+    """The one closing line. Spoken once, with the right name."""
+    names = {"driver": "Luis"}
+    who = f", {names[role]}" if role in names else ""
+    return f"Thanks{who}. It's all on the load record. Goodbye."
 
 
 def driver_reply(snap: dict, status: str, record: dict | None = None) -> str:
