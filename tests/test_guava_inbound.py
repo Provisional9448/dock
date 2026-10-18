@@ -1,0 +1,307 @@
+import json
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
+import pytest
+
+from dock_intake.guava_inbound import build_agent, serve, serve_session
+from dock_intake.inbound_cli import main
+
+
+class FakeAgent:
+    def __init__(self, **kwargs):
+        self.handlers = {}
+        self.transports = []
+
+    def on_call_start(self, fn):
+        self.handlers["start"] = fn
+        return fn
+
+    def on_task_complete(self, fn):
+        self.handlers["complete"] = fn
+        return fn
+
+    def on_question(self, fn):
+        self.handlers["question"] = fn
+        return fn
+
+    def on_session_end(self, fn):
+        self.handlers["end"] = fn
+        return fn
+
+    def listen_phone(self, number):
+        self.transports.append(("phone", number))
+
+    def listen_webrtc(self, code):
+        self.transports.append(("webrtc", code))
+
+
+class FakeCall:
+    id = "session-offline"
+
+    def __init__(self):
+        self.variables = {}
+        self.fields = {}
+        self.instructions = []
+        self.infos = []
+        self.retries = []
+
+    def set_variable(self, key, value):
+        self.variables[key] = value
+
+    def get_variable(self, key, default=None):
+        return self.variables.get(key, default)
+
+    def get_field(self, key):
+        return self.fields.get(key)
+
+    def set_task(self, task_id, **kwargs):
+        self.task_id = task_id
+        self.task = kwargs
+
+    def set_language_mode(self, **kwargs):
+        self.language = kwargs
+
+    def send_instruction(self, text):
+        self.instructions.append(text)
+
+    def add_info(self, label, info):
+        self.infos.append((label, info))
+
+    def retry_task(self, reason):
+        self.retries.append(reason)
+
+    def hangup(self, instructions):
+        self.instructions.append(instructions)
+
+
+class FakeSession:
+    as_of = datetime(2026, 10, 17, 19, 36, tzinfo=timezone.utc)
+
+    def __init__(self):
+        self.reports = []
+        self.error = None
+
+    def status(self, load):
+        return {"load_id": load, "known": load == "LL-88421", "eta": None, "stage": "waiting"}
+
+    def report(self, load, **kwargs):
+        if self.error:
+            raise self.error
+        self.reports.append((load, kwargs))
+        return {"saved": True, "event_id": "test-event", "status": self.status(load)}
+
+
+def setup():
+    session = FakeSession()
+    agent = build_agent(session, sdk=SimpleNamespace(Agent=FakeAgent, Field=lambda **kw: kw))
+    call = FakeCall()
+    agent.handlers["start"](call)
+    return session, agent, call
+
+
+def complete(agent, call, **fields):
+    task_id = call.task_id
+    call.fields.update({f"{task_id}_{key}": value for key, value in fields.items()})
+    agent.handlers["complete"](call, task_id)
+    return task_id
+
+
+def begin_report(agent, call, **fields):
+    complete(agent, call, load="LL-88421")
+    complete(agent, call, action="report")
+    return complete(
+        agent,
+        call,
+        state=fields.get("state", "waiting"),
+        detail=fields.get("detail", "They have not started unloading."),
+        time=fields.get("time", "now"),
+        expected=fields.get("expected", "in 20 minutes"),
+    )
+
+
+def test_status_questions_and_abandoned_report_never_write():
+    session, agent, call = setup()
+    assert "load number first" in agent.handlers["question"](call, "Where is it?")
+    complete(agent, call, load="LL-88421")
+    assert '"eta": null' in agent.handlers["question"](call, "Where is it?")
+    complete(agent, call, action="report")
+    complete(agent, call, state="waiting", detail="Not yet started", time="now")
+    agent.handlers["end"](call, None)
+    assert session.reports == []
+
+
+def test_explicit_readback_confirmation_and_stable_identity():
+    session, agent, call = setup()
+    report_task = begin_report(agent, call)
+    assert session.reports == []
+    confirm_task = complete(agent, call, confirmation="yes")
+    assert len(session.reports) == 1
+    load, report = session.reports[0]
+    assert load == "LL-88421"
+    assert report["state"] == "waiting"
+    assert report["expected_start"] == "in 20 minutes"
+    assert report["occurred_at"] == session.as_of
+    assert report["action_id"] == f"{call.id}:{report_task}"
+    agent.handlers["complete"](call, confirm_task)
+    assert len(session.reports) == 1
+    # A new report gets new field names; an earlier yes is not this confirmation.
+    complete(agent, call, action="report")
+    complete(agent, call, state="unloading_started", detail="Actual unloading now", time="now")
+    complete(agent, call)
+    assert len(session.reports) == 1
+
+
+def test_unknown_load_does_not_assume_demo_load():
+    session, agent, call = setup()
+    complete(agent, call, load="UNKNOWN")
+    assert call.retries
+    assert call.get_variable("dock_load") is None
+    assert session.reports == []
+
+
+@pytest.mark.parametrize("confirmation", ["no", None, "true"])
+def test_unconfirmed_report_is_not_saved(confirmation):
+    session, agent, call = setup()
+    begin_report(agent, call)
+    complete(agent, call, confirmation=confirmation)
+    assert session.reports == []
+
+
+def test_storage_failure_does_not_claim_saved():
+    session, agent, call = setup()
+    begin_report(agent, call)
+    session.error = OSError("private filesystem information")
+    complete(agent, call, confirmation="yes")
+    assert ("Report failure", {"saved": False, "reason": "Storage unavailable"}) in call.infos
+    assert not any(label == "Persistence result" for label, _ in call.infos)
+    assert session.reports == []
+
+
+def test_transit_report_and_ambiguous_time_do_not_write():
+    session, agent, call = setup()
+    begin_report(agent, call, state="outside_scope", detail="Traffic jam")
+    assert call.task_id.startswith("offer_")
+    assert session.reports == []
+    complete(agent, call, action="report")
+    complete(agent, call, state="unloading_started", time="yesterday", detail="started yesterday")
+    assert call.retries
+    assert session.reports == []
+
+
+def test_past_time_without_a_timezone_is_not_saved():
+    session, agent, call = setup()
+    complete(agent, call, load="LL-88421")
+    complete(agent, call, action="report")
+    complete(
+        agent,
+        call,
+        state="waiting",
+        detail="Still at the door",
+        time="2026-10-17T18:30:00",
+        expected="",
+    )
+    assert call.retries
+    assert session.reports == []
+
+
+def test_inbound_gate_is_separate_from_outbound_gate(monkeypatch):
+    monkeypatch.delenv("DOCK_INBOUND_MODE", raising=False)
+    monkeypatch.setenv("DOCK_CALL_MODE", "live")
+    with pytest.raises(RuntimeError, match="DOCK_INBOUND_MODE"):
+        serve_session(FakeSession())
+
+
+def test_legacy_serve_still_requires_call_mode(monkeypatch):
+    monkeypatch.delenv("DOCK_CALL_MODE", raising=False)
+    monkeypatch.setenv("DOCK_INBOUND_MODE", "live")
+    with pytest.raises(RuntimeError, match="DOCK_CALL_MODE"):
+        serve({})
+
+
+def test_live_phone_requires_number_before_sdk_import(monkeypatch):
+    monkeypatch.setenv("DOCK_INBOUND_MODE", "live")
+    monkeypatch.delenv("GUAVA_AGENT_NUMBER", raising=False)
+    with pytest.raises(RuntimeError, match="GUAVA_AGENT_NUMBER"):
+        serve_session(FakeSession())
+
+
+def test_transport_registration_with_fake_sdk_only(monkeypatch):
+    monkeypatch.setenv("DOCK_INBOUND_MODE", "live")
+    created = []
+
+    def factory(**kwargs):
+        agent = FakeAgent(**kwargs)
+        created.append(agent)
+        return agent
+
+    sdk = SimpleNamespace(Agent=factory, Field=lambda **kw: kw)
+    serve_session(FakeSession(), transport="webrtc", webrtc_code="offline-test", sdk=sdk)
+    assert created[0].transports == [("webrtc", "offline-test")]
+
+
+def test_change_load_drops_prior_load_before_new_lookup():
+    session, agent, call = setup()
+    complete(agent, call, load="LL-88421")
+    complete(agent, call, action="change_load")
+    assert call.get_variable("dock_load") is None
+    complete(agent, call, load="UNKNOWN")
+    assert call.get_variable("dock_load") is None
+    assert "load number first" in agent.handlers["question"](call, "Where is it?")
+    assert session.reports == []
+
+
+def test_confirmed_report_survives_next_call_and_restart(root, tmp_path):
+    from dock_intake.session import InboundSession
+
+    log = tmp_path / "runtime.jsonl"
+    session = InboundSession(root, log, FakeSession.as_of)
+    sdk = SimpleNamespace(Agent=FakeAgent, Field=lambda **kw: kw)
+    agent = build_agent(session, sdk=sdk)
+    call = FakeCall()
+    agent.handlers["start"](call)
+    begin_report(agent, call, state="unloading_started", detail="Unload actually began now", expected="")
+    complete(agent, call, confirmation="yes")
+    restarted = InboundSession(root, log, FakeSession.as_of)
+    second_agent = build_agent(restarted, sdk=sdk)
+    second_call = FakeCall()
+    second_agent.handlers["start"](second_call)
+    complete(second_agent, second_call, load="LL-88421")
+    statuses = [info for label, info in second_call.infos if label == "Shipment status"]
+    assert statuses[-1]["stage"] == "unloading_started"
+    assert statuses[-1]["clock"]["phase"] == "closed"
+    assert statuses[-1]["clock"]["estimated_charge_usd"] == "0.00"
+    assert not any(event.type in {"notice_sent", "call_result"} for event in restarted.log.read())
+
+
+def test_question_read_failure_returns_unavailable():
+    session, agent, call = setup()
+    complete(agent, call, load="LL-88421")
+
+    def broken(load):
+        raise OSError("private filesystem detail")
+
+    session.status = broken
+    answer = agent.handlers["question"](call, "Current status?")
+    assert "unavailable" in answer
+    assert "private filesystem" not in answer
+
+
+def test_status_cli_is_offline_and_phone_stays_opt_in(root, tmp_path, monkeypatch, capsys):
+    log = tmp_path / "inbound.jsonl"
+    code = main(
+        ["status", "--root", str(root), "--log", str(log), "--as-of", "2026-10-17T19:36:00Z"]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["stage"] == "waiting"
+    assert payload["eta"] is None
+    assert payload["clock"]["estimated_charge_usd"] == "0.00"
+    assert payload["notices"] == []
+    monkeypatch.delenv("DOCK_INBOUND_MODE", raising=False)
+    monkeypatch.setenv("DOCK_CALL_MODE", "live")
+    code = main(["phone", "--root", str(root), "--log", str(log), "--as-of", "2026-10-17T19:36:00Z"])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "DOCK_INBOUND_MODE" in captured.err
+    assert captured.out == ""
