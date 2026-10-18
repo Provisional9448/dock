@@ -1,8 +1,40 @@
 # Dock
 
+## For judges
+
+Dock is a voice agent for the dock. Call (240) 212-5485 as the driver, shipper, consignee or broker, and it answers from the same live record: when free time started, how long is left, what a charge would be, and what stops it.
+
+Shipper, consignee, broker, carrier all on the same page.
+
+A driver arrives and the receiver is not ready to unload, so free time starts. Dock records the check-in on one append-only log, runs the clock, and gives the shipper and consignee a heads-up with the estimate and what stops the charge. The broker reads those same events as a timestamped trail, and the page says this is not an invoice.
+
+- Demo line: (240) 212-5485. Call as driver, shipper, consignee or broker.
+- Live desk (what the call writes): https://dock-desk-production.up.railway.app
+- Mocks (supporting visuals): https://provisional9448.github.io/dock/site/
+
+One command locally (the inbound voice line plus the desk on 8741):
+
+```bash
+./scripts/demo-up.sh
+```
+
+The voice line is the demo. It needs `guava login` or `GUAVA_API_KEY`. Without Guava auth, only the desk comes up, at http://127.0.0.1:8741.
+
+- `dock-voice` — Inbound Guava line for driver, shipper, consignee, or broker; `dock-live replay` is the scripted fallback.
+- `dock-events` — Append-only JSONL log and the event schema.
+- `dock-clock` — Free-time clock. Writes `clock_started` and `charge_risk`.
+- `dock-intake` — Driver voice and SMS into events.
+- `dock-notify` — Heads-up copy at each detention mark. Writes `notice_sent`.
+- `dock-call` — Scripted outbound plan. `call_phone` runs only with `DOCK_CALL_MODE=live`.
+- `dock-proof` — Renders the timestamped detention trail from the log.
+- `dock-web` — Desk over that log: shipper, consignee, broker, and carrier.
+- `dock-track` — A free-text tracking request becomes a `tracking_requested` event.
+
+All names, phone numbers, loads, and documents in this repo are fictional.
+
 Dock is a small, open toolkit for freight voice and SMS agents. The first workflow is **detention prevention**: a driver arrives and the receiver is not ready to unload, so a free-time clock starts, the shipper and consignee get a heads-up while there is still time to fix it, and the broker keeps a timestamped trail. The trail is there so the charge is not a surprise on the invoice.
 
-This starter was built for the Guava voice-agent hackathon on October 17, 2026. The code is intentionally thin. The docs are the map for human teammates and coding agents. It stays private to the team: do not publish the package or deploy it.
+This starter was built for the Guava voice-agent hackathon on October 17, 2026. The code is intentionally thin. The docs are the map for human teammates and coding agents. It stays private to the team: do not publish the packages to PyPI.
 
 All names, phone numbers, and loads in this repo are fictional.
 
