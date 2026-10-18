@@ -10,7 +10,7 @@ from dock_clock.policy import DetentionPolicy
 from dock_clock.tick import tick
 from dock_events.log import EventLog
 from dock_events.model import Actor, Event, event_from_dict
-from dock_events.timeutil import format_time, parse_time
+from dock_events.timeutil import format_local_long, format_time, parse_time
 
 LOAD_ID = "LL-88421"
 STATES = {"waiting": "delay_reported", "unloading_started": "unload_started", "unloading_done": "unload_done"}
@@ -51,6 +51,7 @@ class InboundSession:
             if arrival is None:
                 return {**base, "detail": "No recorded shipment facts for this load. Ask dispatch to review; no contact has been made."}
             latest = facts[-1]
+            timezone = arrival.payload["timezone"]
             stage = "waiting"
             if any(e.type == "unload_started" for e in facts):
                 stage = "unloading_started"
@@ -66,6 +67,9 @@ class InboundSession:
                              estimated_charge_usd="0.00", remaining_free_minutes=remaining)
             return {**base, "stage": stage, "facility": arrival.payload["facility"],
                     "source_timestamp": latest.occurred_at, "eta": None,
+                    "timezone": timezone,
+                    "source_timestamp_local": format_local_long(latest.occurred_at, timezone),
+                    "as_of_local": format_local_long(base["as_of"], timezone),
                     "expected_start": latest.payload.get("expected_start") if stage == "waiting" else None,
                     "detail": latest.payload.get("detail", ""), "clock": clock,
                     "disclaimer": "Fictional demo; last reported facts, not live GPS. Charges are estimates, not an invoice. Expected start is a caller report, not a confirmed ETA."}

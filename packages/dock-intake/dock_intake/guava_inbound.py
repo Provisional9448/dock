@@ -12,7 +12,22 @@ from dock_events.timeutil import parse_time
 PURPOSE = "Answer shipment status questions and confirm on-site unloading reports."
 RULES = """Speak English. This is a fictional single-load demo with an explicitly pinned demo clock.
 Use only supplied shipment facts and code-calculated charges, always estimates, not invoices.
+For spoken timestamps, read source_timestamp_local and as_of_local verbatim, including date
+and ET timezone. Never read the raw UTC timestamp as a local clock or convert it yourself.
 Say the timestamp of the last report; do not present it as live GPS. Unknown ETA stays unknown.
+Keep replies concise and conversational. Acknowledge frustration once, then answer the actual
+question with the available facts. Swearing or criticism alone is not a reason to end a call.
+Do not say "calm down", "I'm sorry you feel that way", or "I'm just trying to help".
+Do not repeat a menu of report/update/change-load/finish options after each answer. A status-only
+caller does not need to file a report. Ask at most one relevant follow-up when needed, otherwise
+let them respond. Reuse the supplied load number; ask again only if missing or genuinely unclear.
+Do not claim lookup trouble unless a tool actually reports a failure. Do not fill waits with
+repeated reassurance. If a human is requested, honestly explain this demo cannot transfer or
+contact dispatch, without promising a callback or reciting the menu.
+For repeated personal insults that prevent helping: first calmly say you can help with the
+shipment but will end the call if the personal insults continue. Give the caller a chance to
+respond. If they resume a useful question, help them; if personal abuse continues after that
+warning, briefly explain and end the call. Never retaliate or skip the warning for mere abuse.
 Expected unloading is not actual unloading. 'Not started' means waiting. Do not guess a state
 or timestamp. Ask when ambiguous. Only report saved after the persistence result says saved.
 Do not claim dispatch was notified, promise a callback, send messages, transfer, or make calls.
@@ -37,7 +52,7 @@ def build_agent(session: Any, *, sdk: Any = None) -> Any:
         call.set_task(task_id, objective=objective, checklist=checklist)
 
     def offer(call: Any) -> None:
-        task(call, "offer", "Answer any further status questions from facts. Ask whether the caller wants to report an on-site update, select a different load, or finish. Do not solicit an operational report if they only want status.", [
+        task(call, "offer", "Continue naturally with the caller. Answer status questions from supplied facts and wait for their next question; do not recite options or solicit a report. Collect an action only when the caller explicitly wants to report an on-site update, change load, or finish. If repeated personal abuse continues after your clear warning and opportunity to respond, finish the call with a brief explanation.", [
             dict(key="action", field_type="multiple_choice", choices=["report", "change_load", "finish"], description="Caller's explicit choice to report an update, select a different load, or finish")])
 
     @agent.on_call_start
@@ -45,7 +60,7 @@ def build_agent(session: Any, *, sdk: Any = None) -> Any:
         call.set_language_mode(primary="english")
         call.send_instruction(RULES)
         call.add_info("Demo clock", {"as_of": session.as_of.isoformat(), "mode": "pinned fictional time"})
-        task(call, "identify", "Greet the caller as Dock, a fictional shipment demo. Ask for their load number; do not assume it.", [dict(key="load", description="Load number supplied by caller, such as LL-88421")])
+        task(call, "identify", "Greet the caller as Dock, a fictional shipment demo. Use the load number if they already supplied one; otherwise ask for it once. Do not assume it.", [dict(key="load", description="Load number supplied by caller, such as LL-88421")])
 
     @agent.on_question
     def question(call: Any, question_text: str) -> str:
@@ -73,7 +88,7 @@ def build_agent(session: Any, *, sdk: Any = None) -> Any:
                 call.retry_task("That load is unknown. Explain this and ask for the correct load number; never substitute another load.")
                 return
             call.set_variable("dock_load", load)
-            call.send_instruction("Answer with the shipment status, last observation time and unknown ETA from the supplied facts.")
+            call.send_instruction("Answer with the shipment status, code-formatted source_timestamp_local including its timezone and unknown ETA from the supplied facts.")
             offer(call)
         elif kind == "offer":
             if field("action") == "finish":
@@ -90,7 +105,7 @@ def build_agent(session: Any, *, sdk: Any = None) -> Any:
                     dict(key="time", description="Observed time: 'now' for pinned demo time, otherwise ISO-8601 with timezone; never infer a date or timezone"),
                     dict(key="expected", required=False, description="Optional reported future unloading expectation, kept separate from an actual start; do not invent")])
             else:
-                call.retry_task("Ask whether they want to report an update or finish.")
+                call.retry_task("Answer the caller naturally and wait for their intent. Do not repeat a menu or solicit a report.")
         elif kind == "report":
             state = field("state")
             if state not in {"waiting", "unloading_started", "unloading_done"}:

@@ -90,3 +90,13 @@ def test_runtime_rejects_sample_path_and_symlink(root, tmp_path):
     with pytest.raises(ValueError, match="sample fixtures"):
         InboundSession(root, alias, AS_OF)
     assert fixture.read_bytes() == before
+
+
+def test_status_formats_facility_time_and_retains_utc(root, tmp_path):
+    session = InboundSession(root, tmp_path / "events.jsonl", AS_OF)
+    status = session.status("LL-88421")
+    assert status["timezone"] == "America/New_York"
+    assert status["source_timestamp_local"] == "Sat Oct 17, 2026, 2:08 PM ET"
+    assert status["as_of_local"] == "Sat Oct 17, 2026, 4:21 PM ET"
+    assert status["source_timestamp"] == "2026-10-17T18:08:00Z"
+    assert status["as_of"] == "2026-10-17T20:21:00Z"

@@ -81,4 +81,6 @@ Also try an unknown load, a correction, and decline confirmation. No fact should
 
 Offline tests exercise real event persistence/clock code and Guava handlers with simulated call objects. They do not prove speech recognition, natural-language extraction, turn timing or phone audio. Actual inbound rehearsals are required before calling this a live-ready demo.
 
-Current build preflight: Guava CLI reports not authenticated; GUAVA_API_KEY and GUAVA_AGENT_NUMBER are unset. No live call or hosted roleplay was performed during implementation.
+October 17 hosted text-test follow-up: three scripted Guava test sessions exercised an angry status request, pressure for a guaranteed ETA/refund/callback/transfer, and repeated personal abuse. After the conversation fix, all three spoke the recorded timestamp as 2:08 PM ET, omitted repeated action menus, and left the isolated event logs unchanged. Unsupported promises were refused. The abuse case warned the caller, allowed another turn, then ended after continued insults. These are single-run observations, not a guarantee of every future conversation or phone/audio behavior. The offline suite passed 78 tests.
+
+Facility-local timestamp labels are formatted in code; UTC timestamps remain unchanged in storage. Call guidance acknowledges frustration briefly, keeps status questions read-only, and requires a warning before ending continued personal abuse. Swearing alone is not a reason to end the call. The running phone listener must be restarted separately to load code changes.
