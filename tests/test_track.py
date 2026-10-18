@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 from dock_clock.policy import policy_from_context
 from dock_clock.tick import replay_clock
 from dock_events.context import load_context
@@ -288,7 +290,7 @@ def test_watch_appends_one_tracking_requested_line(tmp_path):
     assert first.source == "dock-track"
     assert first.actor.role == "broker"
     assert first.actor.channel == "sms"
-    assert first.payload["summary"] == "tracking requested"
+    assert first.payload["summary"] == "track LL-88421, arrive at Elizabeth"
     assert first.payload["intent"] == "track"
     assert first.payload["condition"]["trigger"] == "arrive_at"
     assert first.payload["condition"]["city"] == "Elizabeth"
@@ -350,4 +352,61 @@ def test_cli_parse_and_watch(tmp_path, monkeypatch, capsys):
     line = load_jsonl(capsys.readouterr().out)
     assert line[0].type == "tracking_requested"
     assert line[0].payload["same_instructions"] is True
+    assert line[0].payload["summary"] == "same_instructions"
     assert EventLog(log).read() == line
+
+
+def test_blank_watch_is_refused(tmp_path):
+    path = tmp_path / "track.jsonl"
+    with pytest.raises(ValueError, match="empty"):
+        watch("LL-88421", path, text="  \n", occurred_at=WHEN)
+    assert not path.exists()
+
+
+def test_status_and_driver_report_include_the_time(tmp_path):
+    path = tmp_path / "track.jsonl"
+    later = "2026-10-13T16:04:00Z"
+    status = watch("LL-88421", path, text="?", occurred_at=WHEN)
+    again = watch("LL-88421", path, text="?", occurred_at=WHEN)
+    later_status = watch("LL-88421", path, text="?", occurred_at=later)
+    assert status.event_id == again.event_id
+    assert later_status.event_id != status.event_id
+    assert status.payload["summary"] == "status"
+    asked = watch("LL-88421", path, text="Any update on PO-44190?", occurred_at=WHEN)
+    assert asked.payload["summary"] == "status PO-44190"
+    first_report = watch("LL-88421", path, text="Driver. Llegué a Harbor & Rye", occurred_at=WHEN)
+    next_report = watch("LL-88421", path, text="Driver. Llegué a Harbor & Rye", occurred_at=later)
+    assert first_report.payload["summary"] == "driver_report"
+    assert first_report.event_id != next_report.event_id
+    tracked = watch("LL-88421", path, text="tell me when it reaches Elizabeth", occurred_at=WHEN)
+    tracked_later = watch(
+        "LL-88421",
+        path,
+        text="tell me when it reaches Elizabeth",
+        occurred_at=later,
+    )
+    assert tracked.event_id == tracked_later.event_id
+    assert tracked.payload["summary"] == "track arrive at Elizabeth"
+    ids = [event.event_id for event in EventLog(path).read()]
+    assert ids.count(status.event_id) == 1
+    assert later_status.event_id in ids
+    assert ids.count(tracked.event_id) == 1
+
+
+def test_cli_skips_a_blank_watch_and_a_duplicate(tmp_path, monkeypatch, capsys):
+    log = tmp_path / "track.jsonl"
+    monkeypatch.setattr(sys, "stdin", io.StringIO("\n"))
+    assert main(["watch", "--load", "LL-88421", "--log", str(log), "--at", WHEN]) == 1
+    assert capsys.readouterr().err.startswith("dock-track:")
+    assert not log.exists()
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO("?\n"))
+    assert main(["watch", "--load", "LL-88421", "--log", str(log), "--at", WHEN]) == 0
+    assert load_jsonl(capsys.readouterr().out)[0].payload["summary"] == "status"
+
+    monkeypatch.setattr(sys, "stdin", io.StringIO("?\n"))
+    assert main(["watch", "--load", "LL-88421", "--log", str(log), "--at", WHEN]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("dock-track: nothing appended")
+    assert len(EventLog(log).read()) == 1

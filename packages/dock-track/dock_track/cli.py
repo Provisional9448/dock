@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from dock_events.log import EventLog
 from dock_events.model import dump_jsonl, event_from_dict
 
 from dock_track.parse import parse_request
@@ -33,9 +34,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "parse":
             sys.stdout.write(json.dumps(parse_request(text).to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
             return 0
+        log_path = Path(args.log)
+        already = {event.event_id for event in EventLog(log_path).read()} if log_path.exists() else set()
         event = watch(
             args.load,
-            Path(args.log),
+            log_path,
             text=text,
             occurred_at=args.at,
             role=args.role,
@@ -46,5 +49,8 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError) as exc:
         print(f"dock-track: {exc}", file=sys.stderr)
         return 1
+    if event.event_id in already:
+        print(f"dock-track: nothing appended, {event.event_id} already logged", file=sys.stderr)
+        return 0
     sys.stdout.write(dump_jsonl([event]))
     return 0

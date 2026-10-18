@@ -286,7 +286,7 @@ dock-track parse                          # stdin is the message, stdout is one 
 dock-track watch --load LL-88421 --log data/runtime/track.jsonl
 ```
 
-`watch` is idempotent for the same load and the same parsed request. A second append with that `event_id` is a no-op.
+`watch` is idempotent for the same load and the same parsed request. `status` and `driver_report` include `occurred_at` in the id, so a later chase is a new line. A second append with an id already in the log is a no-op, and the CLI says so on stderr. The summary names the intent, the identifier, and the condition.
 
 ## Guava, and SMS
 
