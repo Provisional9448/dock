@@ -75,7 +75,7 @@ Schema version 1. `dock-events schema` prints a JSON Schema. The enforcing code 
 | `actor` | `role`, `party_id`, `channel`. |
 | `payload` | Type-specific object. |
 | `caused_by` | Another `event_id`, or null. |
-| `source` | Which module wrote it: `sample`, `dock-intake`, `dock-clock`, `dock-notify`, `dock-call`, `dock-proof`. |
+| `source` | Which module wrote it: `sample`, `dock-intake`, `dock-clock`, `dock-notify`, `dock-call`, `dock-proof`, `dock-track`. |
 
 Roles: `driver`, `shipper`, `consignee`, `broker`, `carrier`, `system`.
 
@@ -96,6 +96,7 @@ Money is a string with two decimals (`"56.25"`), never a JSON float. Phone numbe
 | `notice_sent` | dock-notify | Channel, who, body, estimate, phase |
 | `call_result` | sample or dock-call | Goal, outcome, who, summary |
 | `claim_drafted` | dock-proof | Title, markdown, estimate |
+| `tracking_requested` | dock-track | `intent`, `summary`. Extra keys may carry the caller role, identifiers, a condition, and `same_instructions` |
 
 `arrived` carries a snapshot of the parties so later modules do not join a database. `shipper_contact` and `consignee_contact` are optional extra keys the sample uses so a heads-up can name Sam and Priya. The required name fields stay the company names, which is what the proof pack prints under Parties.
 
@@ -275,6 +276,17 @@ The markdown says it is not an invoice, lists what the estimate excludes, and qu
 | Unload started | `2026-10-17T20:48:00Z` |
 
 `POST /api/driver` runs intake at the demo clock. `POST /api/reset` drops those extra lines. Nothing is written back to the sample file. The page always uses `LogProvider`.
+
+### dock-track
+
+Reads a free-text tracking request (WhatsApp-style, English and Spanish mixed) and appends `tracking_requested`. It does not open the link, invent a location, or move the detention clock.
+
+```bash
+dock-track parse                          # stdin is the message, stdout is one JSON object
+dock-track watch --load LL-88421 --log data/runtime/track.jsonl
+```
+
+`watch` is idempotent for the same load and the same parsed request. `status` and `driver_report` include `occurred_at` in the id, so a later chase is a new line. A second append with an id already in the log is a no-op, and the CLI says so on stderr. The summary names the intent, the identifier, and the condition.
 
 ## Guava, and SMS
 

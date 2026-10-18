@@ -11,6 +11,7 @@ members = [
     "dock-intake",
     "dock-notify",
     "dock-proof",
+    "dock-track",
     "dock-voice",
     "dock-web",
 ]
@@ -66,6 +67,7 @@ dependencies = [
     { name = "dock-intake" },
     { name = "dock-notify" },
     { name = "dock-proof" },
+    { name = "dock-track" },
     { name = "dock-voice" },
     { name = "dock-web" },
     { name = "guava-sdk" },
@@ -84,6 +86,7 @@ requires-dist = [
     { name = "dock-intake", editable = "packages/dock-intake" },
     { name = "dock-notify", editable = "packages/dock-notify" },
     { name = "dock-proof", editable = "packages/dock-proof" },
+    { name = "dock-track", editable = "packages/dock-track" },
     { name = "dock-voice", editable = "packages/dock-voice" },
     { name = "dock-web", editable = "packages/dock-web" },
     { name = "guava-sdk", specifier = ">=0.48" },
@@ -145,6 +148,17 @@ requires-dist = [{ name = "dock-events", editable = "packages/dock-events" }]
 name = "dock-proof"
 version = "0.1.0"
 source = { editable = "packages/dock-proof" }
+dependencies = [
+    { name = "dock-events" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dock-events", editable = "packages/dock-events" }]
+
+[[package]]
+name = "dock-track"
+version = "0.1.0"
+source = { editable = "packages/dock-track" }
 dependencies = [
     { name = "dock-events" },
 ]

@@ -1,0 +1,17 @@
+[project]
+name = "dock-track"
+version = "0.1.0"
+description = "Turn a free-text tracking request into a tracking_requested event."
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = ["dock-events"]
+
+[project.scripts]
+dock-track = "dock_track.cli:main"
+
+[tool.uv.sources]
+dock-events = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
