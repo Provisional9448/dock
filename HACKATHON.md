@@ -30,3 +30,10 @@
 - Branch from `main`, keep PRs small, open a PR; don't push to `main` directly during the sprint.
 - Run tests before pushing (see AGENTS.md).
 - Don't edit files in someone else's lane without saying so in the PR.
+
+## Live status (updated 5:38 PM PT)
+- Building on Anthony's box: Guava inbound voice agent (`packages/dock-voice`), live web views, replay mode, `docs/DEMO-SCRIPT.md`.
+- Cloud agent PRs coming (~6:30 PM): `dock-notify` heads-up templates, `dock-clock` scenario tests.
+- Coming ~6:30 PM: fictional shipment documents (BOL, rate con, POD, detention invoice) modeled on real freight paperwork, every name and number invented, in `data/samples/docs/`.
+- New mock coming: dispatcher board (`site/03-dispatcher-board.html`), a many-loads view for dispatchers.
+- Still open for Brian: `packages/dock-proof` export, README judges section.
