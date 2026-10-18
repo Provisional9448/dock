@@ -34,6 +34,14 @@ One Guava inbound line, one shared log, three live views. Outbound calling is di
 - Call the Dock line: **(240) 212-5485**. Say "driver", "shipper", "receiver" or "broker".
 - Video script: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md)
 
+One command (desk + voice line in tmux; add `replay` for the scripted B-roll):
+
+```bash
+./scripts/demo-up.sh            # or: ./scripts/demo-up.sh replay
+```
+
+Live call transcripts and WAVs are saved to `demo/calls/` after each call.
+
 ```bash
 uv sync && guava login
 export GUAVA_AGENT_NUMBER=+1...            # guava numbers list

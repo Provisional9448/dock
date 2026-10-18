@@ -21,6 +21,35 @@ log = logging.getLogger("dock-voice")
 DISCLOSURE = "Hi, this is Dock, an automated AI assistant for detention on load L L 8 8 4 2 1. This call may be recorded for the load trail."
 
 
+def save_call_later(call_id: str, role: str, delay: float = 15.0) -> None:
+    """Pull the transcript and WAV for a finished call into demo/calls/ (for the video). Best effort."""
+    import os
+    import shutil
+    import subprocess
+    import threading
+    import time
+    from datetime import datetime
+    from pathlib import Path
+
+    out = Path(os.environ.get("DOCK_DEMO_DIR", "demo")) / "calls"
+    cli = shutil.which("guava") or os.path.expanduser("~/.local/bin/guava")
+
+    def work() -> None:
+        time.sleep(delay)
+        out.mkdir(parents=True, exist_ok=True)
+        stem = out / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{role}-{call_id[:16]}"
+        for attempt in range(6):
+            text = subprocess.run([cli, "conversations", "transcript", call_id], capture_output=True, text=True)
+            if text.returncode == 0 and text.stdout.strip():
+                stem.with_suffix(".txt").write_text(text.stdout, encoding="utf-8")
+                break
+            time.sleep(10)
+        subprocess.run([cli, "conversations", "recording", call_id, "-o", str(stem.with_suffix(".wav"))], capture_output=True)
+        log.info("saved call %s to %s.*", call_id, stem)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
 def build_agent(run: LiveRun):
     import guava
 
@@ -139,6 +168,11 @@ def build_agent(run: LiveRun):
         plan = str(call.get_field("plan") or "")
         run.heads_up_by_voice(call_id=str(call.id), to_role=to_role, body=body, reply=plan, summary=snap["summary"])
         call.hangup("Thank them. Say the heads-up and their answer are on the load trail with a timestamp. Say goodbye.")
+
+    @agent.on_session_end
+    def on_session_end(call: guava.Call, ended) -> None:
+        log.info("call %s ended: %s", call.id, getattr(ended, "termination_reason", ended))
+        save_call_later(str(call.id), getattr(call, "get_variable", lambda *_: None)("role", None) or "caller")
 
     @agent.on_task_complete("broker")
     def on_broker(call: guava.Call) -> None:
