@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dock · detention line</title>
+  <meta name="description" content="Dock is an automated phone line that tracks driver waiting time and keeps the driver, shipper, consignee, and broker updated.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="mark">Dock</p>
+      <p class="kicker">Detention line</p>
+    </div>
+    <a class="repo" href="https://github.com/Provisional9448/dock">GitHub</a>
+  </header>
+
+  <main>
+    <h1>An automated phone line that tracks driver waiting time and keeps the driver, shipper, consignee, and broker updated.</h1>
+
+    <div class="call">
+      <a class="talk" href="tel:+12402125485">Talk to an agent</a>
+      <p class="number"><a href="tel:+12402125485">(240) 212-5485</a></p>
+    </div>
+    <p class="heard">The line answers as Doc, for Red Kettle Freight. Calls may be recorded.</p>
+
+    <section class="verify" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try shipment LL-88421</h2>
+      <p class="lead">Say the load number and one company or name from the load. A role by itself never verifies. If those two do not match, Doc asks once more, then gives general information only.</p>
+      <p class="example">“It’s LL-88421, this is Dan at Northwind Orchards.”</p>
+
+      <ol class="roles">
+        <li>
+          <span class="role">Shipper</span>
+          <span class="who">Northwind Orchards · Dan</span>
+          <span class="gets">Hears free time ends at 4:06, then $75 an hour.</span>
+        </li>
+        <li>
+          <span class="role">Receiver</span>
+          <span class="who">Harbor &amp; Rye · Priya</span>
+          <span class="gets">Hears the status, then is asked for a door and a time.</span>
+        </li>
+        <li>
+          <span class="role">Broker</span>
+          <span class="who">Lantern Lane · Alex</span>
+          <span class="gets">Hears status and cost. The carrier invoices from the timestamps.</span>
+        </li>
+        <li>
+          <span class="role">Driver</span>
+          <span class="who">Red Kettle · Luis</span>
+          <span class="gets">Check-in only. No money.</span>
+        </li>
+      </ol>
+    </section>
+
+    <section class="does" aria-labelledby="does-heading">
+      <h2 id="does-heading">What the line does</h2>
+      <ol>
+        <li>
+          <h3>Verifies who’s calling, and which shipment</h3>
+          <p>Load number, plus a company or a name on that load.</p>
+        </li>
+        <li>
+          <h3>Logs driver check-ins and waits</h3>
+          <p>The check-in time, and what the receiver told the driver.</p>
+        </li>
+        <li>
+          <h3>Heads-up to the payer</h3>
+          <p>Shipper or consignee, whoever pays on the load, hears free time and detention. On LL-88421 the shipper pays.</p>
+        </li>
+        <li>
+          <h3>Messages the broker</h3>
+          <p>Status, the cost, and that the carrier invoices from the timestamps.</p>
+        </li>
+        <li>
+          <h3>Answers basic shipment questions</h3>
+          <p>A verified caller gets that role’s answers. Anyone else gets general information only.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>Fictional demo. Harbor &amp; Rye, Northwind, Red Kettle, Lantern Lane. No login.</p>
+    <p><a href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a></p>
+  </footer>
+</body>
+</html>
