@@ -78,8 +78,15 @@ def main(argv: list[str] | None = None) -> int:
         if not number:
             print("dock-voice: set GUAVA_AGENT_NUMBER (see `guava numbers list`)", file=sys.stderr)
             return 2
-        print(f"dock-voice: listening on {number}. Inbound only.", file=sys.stderr, flush=True)
-        agent.listen_phone(number)
+        code = os.environ.get("DOCK_WEBRTC_CODE", "").strip()
+        print(f"dock-voice: listening on {number}" + (" and the web orb (WebRTC)" if code else "") + ". Inbound only.",
+              file=sys.stderr, flush=True)
+        if not code:
+            agent.listen_phone(number)
+            return 0
+        from guava.runner import Runner
+
+        Runner().listen_phone(agent, number).listen_webrtc(agent, code).run()
         return 0
     if args.cmd == "chat":
         agent.chat()

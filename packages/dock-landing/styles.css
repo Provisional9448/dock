@@ -567,3 +567,5 @@ footer a:hover { border-bottom-color: var(--accent); }
   .number { font-size: 28px; }
   footer { flex-direction: column; }
 }
+
+button.talk { font: inherit; cursor: pointer; border: 0; }

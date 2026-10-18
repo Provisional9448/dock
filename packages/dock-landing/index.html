@@ -35,13 +35,10 @@
         <h1>Waiting time,<br><em>on one line.</em></h1>
         <p class="sub">An automated phone line for the driver, shipper, consignee, and broker.</p>
         <div class="call">
-          <a class="talk" href="tel:+12402125485">Talk to an agent</a>
-          <a class="number" href="tel:+12402125485">(240) 212-5485</a>
+          <button type="button" class="talk" id="talk">Talk to an agent</button>
+          <a class="number" href="tel:+12402125485">or call (240) 212-5485</a>
         </div>
-        <div class="mic-row">
-          <button type="button" class="mic" id="orb-mic" aria-pressed="false">Try the orb</button>
-          <p class="mic-note" id="orb-mic-note"></p>
-        </div>
+        <p class="mic-note" id="talk-note" aria-live="polite">Talks to Dock right here in your browser. Your mic turns on when you click.</p>
         <aside class="try">
           <p class="try-id">Try <strong>LL-88421</strong></p>
           <p class="try-line">“It’s LL-88421, this is Dan at Northwind Orchards.”</p>
@@ -118,5 +115,9 @@
     <a href="https://github.com/Provisional9448/dock">github.com/Provisional9448/dock</a>
   </footer>
   <script type="module" src="hero.js"></script>
+  <!-- Guava browser call: same Dock agent as the phone line. The WebRTC code is a public embed code, not an API key. -->
+  <script src="https://app.goguava.ai/static/build/webrtc-widgets/guava-widget-audio-orb.js"
+          data-webrtc-code="grtc-hgmYufXIB6Wvzo0xxBhKW6SmVnonhjiLpcKgK15k"></script>
+  <script src="talk.js"></script>
 </body>
 </html>
