@@ -8,15 +8,22 @@ Works against LiveRun (local or remote desk): only now/set_now/read/has/append/c
 
 from __future__ import annotations
 
+import json
+import logging
+import os
+import threading
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from dock_events.context import arrived_payload
 from dock_events.model import Actor, Event
 from dock_events.timeutil import format_local, format_time, parse_time
 
+log = logging.getLogger("dock-voice")
 
-def log_driver(
+
+def build_driver_events(
     run,
     status: str,
     *,
@@ -26,15 +33,22 @@ def log_driver(
     estimate_minutes: int | None = None,
     channel: str = "voice",
 ) -> tuple[list[Event], dict]:
-    """status: arrived | waiting | unload_started | unload_done. Returns (appended events, read-back record)."""
+    """Build (not append) the driver's events. Returns (new events, read-back record, events already on the log, now).
+
+    Reads the shared log and clock once. Never raises on a failed desk write: the clock catch-up is best
+    effort, and the read-back uses the local `now` either way."""
     load = run.context["load"]
     zone = load.get("timezone", "America/New_York")
     now = run.now()
     if at is not None and now < at <= now + timedelta(minutes=15):
         # Demo clock only: "I checked in at 2:06" said a minute before the shared demo clock reaches 2:06.
         # Move the demo clock past the stated time; never rewrite a logged fact.
-        run.set_now(at + timedelta(minutes=2))
-        now = run.now()
+        target = at + timedelta(minutes=2)
+        try:
+            run.set_now(target)
+        except Exception as exc:  # remote desk refused or slow: keep going on the local clock
+            log.warning("demo clock catch-up failed (%s); using local time", exc)
+        now = target
     if at is not None and (at > now or now - at > timedelta(hours=12)):
         at = None
     events = run.read()
@@ -103,4 +117,46 @@ def log_driver(
         out.append(make(status, {"door": door}, at))
     else:
         raise ValueError(f"unknown driver status {status}")
+    return out, record, events, now
+
+
+def log_driver(run, status: str, **kwargs) -> tuple[list[Event], dict]:
+    """Build and append synchronously (replay, tests). The phone line uses build_driver_events + post_later."""
+    out, record, _base, _now = build_driver_events(run, status, **kwargs)
     return run.append(out), record
+
+
+def local_snapshot(context: dict, facts: list[Event], now: datetime) -> dict:
+    """The desk projection computed in-process from facts we already hold: no network on the speaking path."""
+    from dock_web.desk import Desk
+
+    desk = Desk(context, facts)
+    desk.as_of = now
+    snap = desk.snapshot()
+    snap["clock_local"] = format_local(format_time(now), context["load"].get("timezone", "America/New_York"))
+    return snap
+
+
+def post_later(run, events: list[Event], label: str = "driver", write=None) -> threading.Thread:
+    """Write to the shared log off the call's thread. On failure, keep the events in a local spool file so
+    nothing said on a call is lost, and log why (e.g. desk 403: DOCK_WRITE_TOKEN differs between box and desk)."""
+    write = write or run.append
+
+    def work() -> None:
+        try:
+            appended = write(events)
+            log.info("%s events posted: %s", label, [getattr(e, "type", e) for e in appended or []])
+        except Exception as exc:
+            spool = Path(os.environ.get("DOCK_SPOOL", run.root / "data" / "runtime" / "voice-spool.jsonl"))
+            try:
+                spool.parent.mkdir(parents=True, exist_ok=True)
+                with spool.open("a", encoding="utf-8") as fh:
+                    for event in events:
+                        fh.write(json.dumps(event.to_dict()) + "\n")
+            except Exception:
+                pass
+            log.error("%s events NOT posted to the desk (%s); spooled to %s", label, exc, spool)
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+    return thread

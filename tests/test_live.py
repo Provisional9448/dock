@@ -88,6 +88,19 @@ def test_live_routes_and_write_token(run, sample_dir, monkeypatch):
         server.shutdown()
 
 
+def _wait_for(run, count, timeout=5.0):
+    """Desk writes happen off the call thread now; wait for them."""
+    import time
+
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        events = run.read()
+        if len(events) >= count:
+            return events
+        time.sleep(0.02)
+    return run.read()
+
+
 def test_agent_handlers_with_mockcall(run):
     """Handler-level tests with Guava's MockCall. Phrases come from data/samples/conversations/."""
     from guava.testing import MockCall
@@ -110,7 +123,7 @@ def test_agent_handlers_with_mockcall(run):
     driver.set_field("said_by", "Dana at the receiving window")
     driver.set_field("said", "no doors open, wait in your truck, we'll call you, maybe 40 minutes")
     agent._on_task_complete_handlers["driver_report"](driver)
-    events = run.read()
+    events = _wait_for(run, 2)
     assert [e.type for e in events] == ["arrived", "delay_reported"]
     assert events[0].occurred_at == "2026-10-17T18:06:00Z"
     assert "Dana at the receiving window said" in events[1].payload["detail"]
@@ -133,7 +146,7 @@ def test_agent_handlers_with_mockcall(run):
     agent._on_task_complete_handlers["who"](shipper)
     shipper.set_field("plan", "I'll call the DC, let me know when it's unloading")
     agent._on_task_complete_handlers["heads_up"](shipper)
-    kinds = [e.type for e in run.read()]
+    kinds = [e.type for e in _wait_for(run, 4)]
     assert kinds[-2:] == ["notice_sent", "call_result"]
     assert run.read()[-2].payload["channel"] == "voice"
 
@@ -197,3 +210,94 @@ def test_unload_without_check_in_does_not_close_the_clock(run):
     assert [e.type for e in events] == ["arrived", "delay_reported"] and rec["status"] == "arrived"
     snap = LiveDesk(run).snapshot()
     assert snap["summary"]["phase"] == "running" and snap["summary"]["remaining_free_minutes"] == 120
+
+
+def test_driver_readback_survives_desk_403(tmp_path, monkeypatch):
+    """Live-path failure, 6:16 PM PT call: the remote desk answered the event POST (and the clock catch-up)
+    with HTTP 403 because DOCK_WRITE_TOKEN differed. The handler raised, the read-back was never sent, and
+    the agent stalled on 'one moment'. Now the read-back is spoken from the local clock and the write is
+    spooled in the background."""
+    import time
+    from urllib.error import HTTPError
+
+    from guava.testing import MockCall
+
+    from dock_voice.agent import build_agent
+
+    monkeypatch.delenv("DOCK_LIVE_URL", raising=False)
+    monkeypatch.setenv("DOCK_SPOOL", str(tmp_path / "spool.jsonl"))
+
+    class Forbidden(LiveRun):
+        def append(self, events):
+            raise HTTPError("https://desk/api/live/events", 403, "Forbidden", None, None)
+
+        def set_now(self, moment):
+            if getattr(self, "_ready", False):
+                raise HTTPError("https://desk/api/live/clock", 403, "Forbidden", None, None)
+            super().set_now(moment)
+
+    run = Forbidden(ROOT, runtime=tmp_path)
+    run.set_now(parse_time("2026-10-17T18:05:30Z"))
+    run._ready = True
+    try:
+        agent = build_agent(run)
+    except Exception as exc:
+        pytest.skip(f"no Guava credentials: {exc}")
+    call = MockCall()
+    call.set_field("role", "driver")
+    agent._on_task_complete_handlers["who"](call)
+    call.set_field("status", "checked in, waiting for a door")
+    call.set_field("at", "2:06")
+    call.set_field("said_by", "the receiving clerk")
+    call.set_field("said", "wait in the truck, maybe 40 minutes")
+    started = time.monotonic()
+    agent._on_task_complete_handlers["driver_report"](call)
+    assert time.monotonic() - started < 3
+    said = " ".join(str(getattr(c, "script", "")) + str(getattr(c, "instruction", "")) + str(getattr(c, "task", "")) + repr(c) for c in call._command_queue)
+    assert "2:06 PM Eastern" in said and "1 hour 58 minutes from now" in said and "$75 an hour" in said
+    assert "Anything else?" in said
+    for _ in range(100):
+        spool = tmp_path / "spool.jsonl"
+        if spool.exists() and len(spool.read_text().splitlines()) >= 2:
+            break
+        time.sleep(0.05)
+    spooled = [json.loads(line)["type"] for line in (tmp_path / "spool.jsonl").read_text().splitlines()]
+    assert spooled == ["arrived", "delay_reported"]
+
+
+def test_caller_name_near_matches():
+    from dock_voice.agent import NAME_NOTE
+
+    for heard in ("Louise", "Lewis", "Louis", "Luiz"):
+        assert heard in NAME_NOTE
+    assert "Eastern" in NAME_NOTE and "never 'ET'" in NAME_NOTE
+
+
+def test_call_files_retry_until_guava_has_them(tmp_path):
+    """6:10 and 6:16 calls saved only 'No transcript available yet.' and no WAV: the first answer was taken."""
+    from types import SimpleNamespace
+
+    from dock_voice.agent import fetch_call_files
+
+    calls = {"transcript": 0, "recording": 0}
+
+    def fake_run(cmd, **_kw):
+        kind = cmd[2]
+        calls[kind] += 1
+        if kind == "transcript":
+            text = "No transcript available yet." if calls[kind] < 3 else "0:00 AGENT Hi, this is Dock"
+            return SimpleNamespace(returncode=0, stdout=text)
+        if calls[kind] >= 2:
+            Path(cmd[-1]).write_bytes(b"RIFF" + b"\0" * 4096)
+            return SimpleNamespace(returncode=0, stdout="Saved")
+        return SimpleNamespace(returncode=1, stdout="")
+
+    got = fetch_call_files("abc123", tmp_path / "call", cli="guava", run=fake_run, sleep=lambda _s: None)
+    assert got == {"transcript": True, "audio": True}
+    assert "Hi, this is Dock" in (tmp_path / "call.txt").read_text()
+    assert (tmp_path / "call.wav").stat().st_size > 1024
+
+
+def test_parse_clock_spoken_digits():
+    now = datetime(2026, 10, 17, 18, 8, tzinfo=timezone.utc)
+    assert parse_clock("I checked in at 206", now, "America/New_York") == parse_time("2026-10-17T18:06:00Z")

@@ -6,7 +6,7 @@ Fictional load, real Guava voice agent. Outbound calling is disabled at the hack
 
 **Before you hit record (2 min)**
 - Box: `dock-web --live` on 8741 and `dock-voice serve` are running (see "Run it" below), or use the public desk.
-- Open the live desk full screen: https://dock-desk-production.up.railway.app (or http://127.0.0.1:8741).
+- Open the live desk full screen: **http://127.0.0.1:8741** (the box desk; it shares one log with the phone line). The Railway desk only gets calls when `DOCK_REMOTE=1`.
 - Click **New run**. The clock reads **2:04 PM ET**, stamp **NO CLOCK**.
 - Phone on speaker, ready to dial **(240) 212-5485**. Screen recorder captures system audio + mic.
 - Backup if a call fails: in a terminal, `uv run dock-live replay --pause 6` plays the whole story into the same log.

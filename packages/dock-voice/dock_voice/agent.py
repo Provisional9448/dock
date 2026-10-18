@@ -16,7 +16,7 @@ import logging
 
 from dock_web.live import LiveDesk, LiveRun
 
-from dock_voice.record import log_driver
+from dock_voice.record import build_driver_events, local_snapshot, post_later
 from dock_voice.script import (
     DRIVER_STATUS,
     answer_question,
@@ -28,36 +28,77 @@ from dock_voice.script import (
     spoken,
 )
 
+NAME_NOTE = (
+    " The driver's name is Luis (said 'loo-EES'). If you hear Louise, Lewis, Louis or Luiz, it is Luis; call him Luis."
+    " Say clock times like '2:06 PM Eastern', never 'ET' and never with a leading zero."
+    " After the driver answers, do not say 'one moment' or 'processing'; Dock's read-back comes right away."
+)
+
 log = logging.getLogger("dock-voice")
 
 DISCLOSURE = "Hi, this is Dock, an automated AI assistant for detention on load L L 8 8 4 2 1. This call may be recorded for the load trail."
 
 
-def save_call_later(call_id: str, role: str, delay: float = 15.0) -> None:
-    """Pull the transcript and WAV for a finished call into demo/calls/ (for the video). Best effort."""
+def fetch_call_files(call_id: str, stem, *, tries: int = 12, wait: float = 10.0, cli: str | None = None, run=None, sleep=None) -> dict:
+    """Pull transcript (.txt) and audio (.wav) for a finished call from Guava, retrying until both are there.
+
+    Guava answers 'No transcript available yet.' (exit 0) for a while after hangup, and the WAV can lag too,
+    so neither counts until it has real content. Returns {"transcript": bool, "audio": bool}."""
     import os
+    import re
     import shutil
     import subprocess
+    import time
+    from pathlib import Path
+
+    run = run or subprocess.run
+    sleep = sleep or time.sleep
+    cli = cli or shutil.which("guava") or os.path.expanduser("~/.local/bin/guava")
+    stem = Path(stem)
+    stem.parent.mkdir(parents=True, exist_ok=True)
+    txt, wav = stem.with_suffix(".txt"), stem.with_suffix(".wav")
+    got = {"transcript": False, "audio": False}
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+    for attempt in range(tries):
+        if not got["transcript"]:
+            out = run([cli, "conversations", "transcript", call_id], capture_output=True, text=True)
+            text = ansi.sub("", out.stdout or "").strip()
+            if out.returncode == 0 and text and "no transcript available" not in text.lower():
+                txt.write_text(text + "\n", encoding="utf-8")
+                got["transcript"] = True
+        if not got["audio"]:
+            out = run([cli, "conversations", "recording", call_id, "-o", str(wav)], capture_output=True, text=True)
+            if out.returncode == 0 and wav.exists() and wav.stat().st_size > 1024:
+                got["audio"] = True
+            elif wav.exists() and wav.stat().st_size <= 1024:
+                wav.unlink()
+        if all(got.values()):
+            break
+        sleep(wait)
+    if not got["transcript"]:
+        txt.write_text("No transcript from Guava after retrying.\n", encoding="utf-8")
+    log.info("call %s files: transcript=%s audio=%s (%s.*)%s", call_id, got["transcript"], got["audio"], stem,
+             "" if got["audio"] else " - Guava gave no audio; get it from the caller side")
+    return got
+
+
+def save_call_later(call_id: str, role: str, delay: float = 15.0) -> None:
+    """After hangup, save the transcript and WAV into demo/calls/ for the video. Retries ~2 minutes. Best effort."""
+    import os
     import threading
     import time
     from datetime import datetime
     from pathlib import Path
 
     out = Path(os.environ.get("DOCK_DEMO_DIR", "demo")) / "calls"
-    cli = shutil.which("guava") or os.path.expanduser("~/.local/bin/guava")
+    stem = out / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{role}-{call_id[:16]}"
 
     def work() -> None:
         time.sleep(delay)
-        out.mkdir(parents=True, exist_ok=True)
-        stem = out / f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{role}-{call_id[:16]}"
-        for attempt in range(6):
-            text = subprocess.run([cli, "conversations", "transcript", call_id], capture_output=True, text=True)
-            if text.returncode == 0 and text.stdout.strip():
-                stem.with_suffix(".txt").write_text(text.stdout, encoding="utf-8")
-                break
-            time.sleep(10)
-        subprocess.run([cli, "conversations", "recording", call_id, "-o", str(stem.with_suffix(".wav"))], capture_output=True)
-        log.info("saved call %s to %s.*", call_id, stem)
+        try:
+            fetch_call_files(call_id, stem)
+        except Exception:
+            log.exception("saving call %s failed", call_id)
 
     threading.Thread(target=work, daemon=True).start()
 
@@ -80,8 +121,9 @@ def build_agent(run: LiveRun):
             "answer short. Never invent numbers; use only what Dock's tools return. Callers chase: 'any update?', "
             "'please confirm', 'tell me when it's unloading'. Answer with the current clock every time. A detention "
             "amount is an estimate until the client agrees to it: never call it a bill or an invoice."
+            + NAME_NOTE
         ),
-        pronunciations={"LL-88421": "L L 8 8 4 2 1"},
+        pronunciations={"LL-88421": "L L 8 8 4 2 1", "Luis": "Loo-EES"},
     )
 
     @agent.on_call_start
@@ -223,13 +265,15 @@ def build_agent(run: LiveRun):
 
     @agent.on_task_complete("driver_report")
     def on_driver(call: guava.Call) -> None:
+        """Speak from the local clock first (no desk write on this path), then post to the desk in the background.
+        6:16 PM call: the desk POST raised 403 inside this handler, so the read-back was never sent."""
         status = pick_status(call.get_field("status"))
-        zone = run.context["load"].get("timezone", "America/New_York")
-        at = parse_clock(call.get_field("at"), run.now(), zone)
         said = str(call.get_field("said") or "")
-        record: dict = {}
+        readback = None
         try:
-            events, record = log_driver(
+            zone = run.context["load"].get("timezone", "America/New_York")
+            at = parse_clock(call.get_field("at"), run.now(), zone)
+            events, record, base, now = build_driver_events(
                 run,
                 status,
                 at=at,
@@ -237,11 +281,18 @@ def build_agent(run: LiveRun):
                 said=said,
                 estimate_minutes=parse_minutes(said),
             )
-            status = record.get("status", status)
-            log.info("driver logged %s", [e.type for e in events])
-        except ValueError as exc:
-            log.warning("driver report rejected: %s", exc)
-        wrap_up(call, driver_readback(desk.snapshot(), status, record))
+            post_later(run, events, "driver")
+            snap = local_snapshot(run.context, [*base, *events], now)
+            readback = driver_readback(snap, record.get("status", status), record)
+            log.info("driver read-back ready: %s", [e.type for e in events])
+        except Exception:
+            log.exception("driver path failed; speaking a fallback read-back")
+        if not readback:
+            readback = spoken(
+                "Thanks, Luis. I have your check-in and what the receiver told you. Free time is two hours from "
+                "your check-in, then detention is $75 an hour in 15-minute steps. Dock will warn the shipper and the broker."
+            )
+        wrap_up(call, readback)
 
     @agent.on_task_complete("heads_up")
     def on_heads_up(call: guava.Call) -> None:
@@ -250,7 +301,14 @@ def build_agent(run: LiveRun):
         snap = desk.snapshot()
         body = call.get_variable("heads_up", snap["heads_up"][to_role])
         plan = str(call.get_field("plan") or "")
-        run.heads_up_by_voice(call_id=str(call.id), to_role=to_role, body=body, reply=plan, summary=snap["summary"])
+        post_later(
+            run,
+            [],
+            to_role,
+            write=lambda _events: run.heads_up_by_voice(
+                call_id=str(call.id), to_role=to_role, body=body, reply=plan, summary=snap["summary"]
+            ),
+        )
         wrap_up(call, "Thanks. The heads-up and your answer are on the load record with a timestamp.")
 
     @agent.on_session_end

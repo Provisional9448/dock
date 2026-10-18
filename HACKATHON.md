@@ -31,13 +31,15 @@
 - Run tests before pushing (see AGENTS.md).
 - Don't edit files in someone else's lane without saying so in the PR.
 
-## Live status (updated 6:16 PM PT)
+## Live status (updated 6:25 PM PT)
 - Pitch: shipper, consignee, broker, carrier all on the same page.
 - Box build (in progress): Guava inbound voice agent (`packages/dock-voice`) handling track/status/driver-report/doc requests from any party; live web views; replay mode; `docs/DEMO-SCRIPT.md`.
 - Merged: PR #1 `dock-notify` heads-up SMS + voice script.
 - Merged: PR #2 `dock-clock` scenario tests + timezone fix.
 - Merged: PR #3 `dock-track` tracking-request intake.
 - Merged: PR #4 `data/samples/board/` 8-load dispatcher fixtures. Cloud agent now building the dispatcher board view in `packages/dock-web` (its lane; don't touch dock-web).
+- Merged: PR #5 README judges section.
+- 6:16 PM call fix: the line now speaks the driver read-back from the local clock right away and writes the log in the background (the Railway desk rejected the write with 403, which stalled the call). `demo-up.sh` now has the line and the local desk (http://127.0.0.1:8741) share one log on the box; the Railway desk no longer gets live calls unless `DOCK_REMOTE=1`. Call transcript + WAV are saved to `demo/calls/` after hangup (retries ~2 min).
 - Driver story rewritten: Luis already checked in at receiving at 2:06 and was told "no doors, wait in the truck, maybe 40 min"; he calls Dock to put that check-in and the promise on the record (no directions). Voice prompts, roleplays, fixtures, `docs/DEMO-SCRIPT.md` updated. Line fixes from the 6:10 test call: says "Eastern" not "ET", correct time left, rate with every $ figure, asks "Anything else?" before hanging up, skips the role question if the caller opens with it.
 - Done: fictional docs in `data/samples/docs/`; fictional tracking requests + partner threads in `data/samples/conversations/`; cleaned mocks incl. dispatcher board in `site/`.
 - **Note for Brian:** the demo runs on main's `dock-voice` line, which took a real call at 6:10 PM via AgentLine. Your `brian` branch (dock-inbound) overlaps the voice CLI, the desk, `scripts/demo-up.sh` and `docs/DEMO-SCRIPT.md`, so we're holding it until after the 8:30 freeze rather than merging it now. Please put new work on main's layout in separate folders, or ping Anthony. Cloud agents are working on `packages/dock-web` (dispatcher board) and `README.md` (judges section).

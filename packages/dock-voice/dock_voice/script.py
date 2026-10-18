@@ -161,6 +161,11 @@ def parse_clock(answer: object, now: datetime, zone: str, *, ahead_minutes: int 
         match = _HOUR_AMPM_RE.search(text)
         if match:
             hour, minute, half = int(match.group(1)), 0, match.group(2)
+    if hour is None:
+        # speech-to-text often writes "2:06" as "206" or "2 06"
+        match = re.search(r"\b(?:at|around|about)?\s*(\d{1,2})\s?(\d{2})\b(?!\s*(?:min|minutes|pallets|%))", text)
+        if match and re.search(r"\b(at|around|about|checked in|started|start)\b", text):
+            hour, minute = int(match.group(1)), int(match.group(2))
     if hour is None or minute is None or minute > 59 or hour > 23:
         return None
     if half:
