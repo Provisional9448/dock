@@ -2,7 +2,7 @@
 
 **All data here is fictional.** Every person, company, phone number, link, tracking code, PRO, container, BOL, load and amount is invented. Links point to `example.com`. The samples copy common freight-coordination patterns (phrasing, cadence, chasing behavior) and contain no real messages.
 
-The fixtures match `../godex-mock-docs/`: Red Kettle Freight (carrier code RKFX, demo), Northwind Orchards in Fresno, Harbor & Rye Grocery DC in Elizabeth NJ, driver Luis Ortega, truck 1841, trailer RKF-53R-2207, container ABCU1234567, load LL-88421, PO-44190, PRO RK-PRO-884210, BOL RK-BOL-50318, appointment HR-APT-30957, detention $75/hr after 2 hours free. Supporting invented roles: Sam Okafor (ops lead at the demo broker Orchard Line Logistics), Dana Whitcomb (Red Kettle dispatch), Keisha Barnwell (Harbor & Rye receiving), Tomás Reyes (Harbor & Rye transportation desk).
+The fixtures match `../docs/`: Red Kettle Freight (carrier code RKFX, demo), Northwind Orchards in Fresno, Harbor & Rye Grocery DC in Elizabeth NJ, driver Luis Ortega, truck 1841, trailer RKF-53R-2207, container ABCU1234567, load LL-88421, PO-44190, PRO RK-PRO-884210, BOL RK-BOL-50318, appointment HR-APT-30957, detention $75/hr after 2 hours free. Supporting invented roles: Sam Okafor (ops lead at the demo broker Orchard Line Logistics), Dana Whitcomb (Red Kettle dispatch), Keisha Barnwell (Harbor & Rye receiving), Tomás Reyes (Harbor & Rye transportation desk).
 
 ## Inbound tracking requests (client → Dock assistant)
 | File | What it shows |
