@@ -38,5 +38,5 @@
 - PR #2 `dock-clock` scenario tests + timezone fix: in review.
 - Cloud agent: `packages/dock-track` tracking-request intake (PR coming).
 - Cloud agent: `data/samples/board/` 8-load dispatcher fixtures (PR coming).
-- Done: fictional docs in `data/samples/docs/`; cleaned mocks incl. dispatcher board in `site/`.
+- Done: fictional docs in `data/samples/docs/`; fictional tracking requests + partner threads in `data/samples/conversations/`; cleaned mocks incl. dispatcher board in `site/`.
 - Still open for Brian: `packages/dock-proof` export, README judges section.
