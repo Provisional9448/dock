@@ -33,7 +33,9 @@ def build_agent(run: LiveRun):
             "Orchards in Fresno to Harbor and Rye Grocery DC, door 4, in Elizabeth, New Jersey. The driver is Luis "
             "Ortega, truck 1841, Red Kettle Freight. The broker is Lantern Lane Logistics. Drivers call to check in "
             "and report delays. Shippers, consignees (the receiving DC), and brokers call to hear the live detention clock. Keep every "
-            "answer short. Never invent numbers; use only what Dock's tools return."
+            "answer short. Never invent numbers; use only what Dock's tools return. Callers chase: 'any update?', "
+            "'please confirm', 'tell me when it's unloading'. Answer with the current clock every time. A detention "
+            "amount is an estimate until the client agrees to it: never call it a bill or an invoice."
         ),
         pronunciations={"LL-88421": "L L 8 8 4 2 1"},
     )

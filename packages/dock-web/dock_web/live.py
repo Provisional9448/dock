@@ -323,7 +323,14 @@ class LiveDesk(Desk):
 
 
 def heads_up_text(snap: dict, role: str) -> str:
-    """What Dock would have said on the outbound call. Rules in code, not in a prompt."""
+    """What Dock would have said on the outbound call. Rules in code, not in a prompt.
+
+    Once the clock has a charge_risk mark, the spoken script is dock-notify's compose_pair, so the call and
+    the SMS say the same thing. Before the first mark (plenty of free time) Dock gives a plain status."""
+    if role in ("shipper", "consignee"):
+        spoken = _notify_script(snap, role)
+        if spoken:
+            return spoken
     s = snap["summary"]
     load = snap["load"]
     if s["phase"] == "not_started":
@@ -357,6 +364,23 @@ def heads_up_text(snap: dict, role: str) -> str:
         f"Update on load {load['load_id']}. The unload started and the clock stopped. "
         f"The trail supports ${s['estimated_charge_usd']} of detention. This is not an invoice."
     )
+
+
+def _notify_script(snap: dict, role: str) -> str | None:
+    from dock_events.model import event_from_dict
+    from dock_notify.compose import compose_pair
+
+    events = [event_from_dict(row["event"]) for row in snap["events"]]
+    arrived = next((e for e in events if e.type == "arrived"), None)
+    risks = [e for e in events if e.type == "charge_risk"]
+    if arrived is None or not risks:
+        return None
+    charge = max(risks, key=lambda e: (e.occurred_at, e.event_id))
+    try:
+        _sms, spoken = compose_pair(arrived.payload, charge, role)
+    except (ValueError, KeyError):
+        return None
+    return spoken
 
 
 def _step(snap: dict) -> str:

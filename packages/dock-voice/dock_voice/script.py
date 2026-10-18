@@ -61,9 +61,8 @@ def answer_question(snap: dict, question: str) -> str:
     if s["phase"] == "not_started":
         parts.append("The driver has not checked in yet, so no detention clock is running.")
         return " ".join(parts)
-    if any(word in q for word in ("how much", "charge", "cost", "estimate", "owe", "money", "dollar")):
-        parts.append(f"The detention estimate is ${s['estimated_charge_usd']}.")
-    if any(word in q for word in ("when", "time", "left", "free", "long")):
+    parts.append(f"The detention estimate is ${s['estimated_charge_usd']}, an estimate until the client agrees, not an invoice.")
+    if True:
         if s["phase"] in ("running", "warning"):
             parts.append(f"Free time ends at {s['free_time_ends_local']}, {s['remaining_free_minutes']} minutes from now.")
         else:
@@ -72,7 +71,7 @@ def answer_question(snap: dict, question: str) -> str:
     rate = snap["policy"]
     parts.append(
         f"Policy: {rate['free_minutes']} minutes free, then ${rate['rate_usd_per_hour']} an hour in "
-        f"{rate['increment_minutes']}-minute steps. Load {snap['load']['load_id']}, PO {snap['load']['reference']}, "
+        f"{rate['increment_minutes']}-minute steps. Load {snap['load']['load_id']}, {snap['load']['reference']}, "
         f"{snap['load']['commodity']}, {snap['load']['facility']}."
     )
     return " ".join(parts)

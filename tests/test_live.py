@@ -38,10 +38,11 @@ def test_heads_up_and_questions_read_the_clock(run):
     run.driver_status("arrived", detail="Door 4 is occupied.")
     desk.jump_preset("warning")
     snap = desk.snapshot()
-    assert "30 minutes from now" in snap["heads_up"]["shipper"]
+    assert "Free time ends 4:0" in snap["heads_up"]["shipper"] and "$0.00" in snap["heads_up"]["shipper"]
+    assert "Priya Shah" in snap["heads_up"]["consignee"]
     assert "$0.00" in answer_question(snap, "how much is it so far?")
     desk.jump_preset("accruing")
-    assert "$18.75 is on the trail" in desk.snapshot()["heads_up"]["shipper"]
+    assert "$18.75" in desk.snapshot()["heads_up"]["shipper"]
 
 
 def test_driver_cannot_check_in_twice(run):
@@ -76,3 +77,33 @@ def test_live_routes_and_write_token(run, sample_dir, monkeypatch):
         assert len(raw["events"]) == 2
     finally:
         server.shutdown()
+
+
+def test_agent_handlers_with_mockcall(run):
+    """Handler-level tests with Guava's MockCall. Phrases come from data/samples/conversations/."""
+    from guava.testing import MockCall
+
+    from dock_voice.agent import build_agent
+
+    agent = build_agent(run)
+    answer = agent._on_question(MockCall(), "any update?")
+    assert "Dock clock" in answer and "not checked in" in answer
+
+    driver = MockCall()
+    driver.set_field("role", "driver")
+    agent._on_task_complete_handlers["who"](driver)
+    driver.set_field("status", "arrived, waiting to unload")
+    driver.set_field("detail", "checked in on time, door 4 occupied, still not unloading")
+    agent._on_task_complete_handlers["driver_report"](driver)
+    assert [e.type for e in run.read()] == ["arrived", "delay_reported"]
+
+    LiveDesk(run).jump_preset("warning")
+    assert "$0.00" in agent._on_question(MockCall(), "please confirm the detention amount")
+    shipper = MockCall()
+    shipper.set_field("role", "shipper")
+    agent._on_task_complete_handlers["who"](shipper)
+    shipper.set_field("plan", "I'll call the DC, let me know when it's unloading")
+    agent._on_task_complete_handlers["heads_up"](shipper)
+    kinds = [e.type for e in run.read()]
+    assert kinds[-2:] == ["notice_sent", "call_result"]
+    assert run.read()[-2].payload["channel"] == "voice"
