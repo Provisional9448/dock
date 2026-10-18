@@ -1,0 +1,63 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><style>
+body{width:1280px;height:800px;overflow:hidden}
+.wrap{display:grid;grid-template-columns:1fr 380px;height:calc(800px - 52px - 27px)}
+.main{padding:26px 28px;display:flex;flex-direction:column;gap:20px}
+.side{border-left:1px solid #CFCBC2;padding:22px 22px;background:#F7F6F2;display:flex;flex-direction:column;gap:10px}
+.hero{display:flex;align-items:flex-end;justify-content:space-between}
+.big{font-size:84px;font-weight:600;letter-spacing:-.04em;line-height:.95}
+.est{text-align:right}
+.est .n{font-family:"IBM Plex Mono",monospace;font-size:44px;font-weight:600}
+.ruler{position:relative;height:74px;margin-top:4px}
+.bar{position:absolute;top:28px;left:0;right:0;height:16px;border:1px solid #1A1A1A;border-radius:2px;background:#FBFAF7;display:flex}
+.zfree{width:72%;border-right:2px solid #1A1A1A;position:relative}
+.used{position:absolute;left:0;top:0;bottom:0;width:4%;background:#1A1A1A}
+.zpay{flex:1;background:repeating-linear-gradient(45deg,#F4E3DF 0 6px,#FBFAF7 6px 12px)}
+.tick{position:absolute;top:0;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#5F5B53;white-space:nowrap}
+.tickb{position:absolute;top:50px;font-family:"IBM Plex Mono",monospace;font-size:11px;white-space:nowrap}
+.drv{display:flex;gap:10px;align-items:center}
+.input{flex:1;border:1px solid #9C978C;border-radius:4px;padding:9px 12px;background:#FBFAF7;color:#5F5B53;font-size:13px}
+.presets{display:flex;gap:8px;align-items:center}
+.presets .p{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:5px 10px;border:1px dashed #9C978C;border-radius:4px}
+.presets .p.on{border:1px solid #1A1A1A;background:#1A1A1A;color:#FBFAF7}
+</style></head><body>
+<div class="top"><div class="brand"><b>Dock</b><span class="mono muted" style="font-size:12px">LL-88421 · PO-44190 · 18 pallets citrus · Fresno → Elizabeth NJ</span></div>
+<div class="seg"><span class="on">Carrier</span><span>Shipper</span><span>Broker</span></div></div>
+<div class="banner">FICTIONAL DESK · demo clock Sat Oct 17 · no call or SMS leaves this machine</div>
+<div class="wrap"><div class="main">
+ <div class="hero"><div>
+   <span class="stamp free">ON FREE TIME</span>
+   <div class="big" style="margin-top:16px">1h 56m free</div>
+   <div style="margin-top:10px;font-size:15px">Luis Ortega · truck 1841 · Red Kettle Freight<br><span class="muted">Just arrived at Harbor &amp; Rye Grocery DC, Elizabeth · <b style="color:#1A1A1A">door 4</b></span></div>
+ </div>
+ <div class="est"><div class="lbl">Estimate so far</div><div class="n">$0.00</div><div class="muted" style="font-size:12px">not an invoice · $75.00/hr after free time</div></div></div>
+
+ <div class="card"><div class="lbl" style="margin-bottom:6px">Free-time clock · 120 min · ET</div>
+  <div class="ruler">
+   <span class="tick" style="left:0">2:00 appt</span>
+   <span class="tick" style="left:3%">  </span>
+   <span class="tick" style="left:72%;transform:translateX(-50%)">4:06 free time ends</span>
+   <span class="tick" style="right:0">+$18.75 / 15 min</span>
+   <div class="bar"><div class="zfree"><div class="used"></div></div><div class="zpay"></div></div>
+   <span class="tickb" style="left:0">▲ 2:06 arrived (6 min late — free time starts at arrival)</span>
+   <span class="tickb muted" style="left:56%">3:36 heads-up goes out ▲</span>
+  </div></div>
+
+ <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+  <div><div class="lbl">Reported delay</div><div style="font-size:16px;margin-top:4px">Door 4 occupied — receiver not ready to unload</div><div class="muted" style="font-size:12px;margin-top:2px">driver SMS 2:08 PM · “Still waiting. Door is occupied.”</div></div>
+  <div style="text-align:right"><div class="lbl">What stops the clock</div><div style="margin-top:4px">Unload starts before <b>4:06 PM</b></div></div></div>
+
+ <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+  <div class="drv"><div class="input">Text as Luis… (logs with demo clock)</div><span class="chip">Still waiting. Door is occupied.</span><span class="chip">They started unloading.</span><span class="btn pri">Log driver SMS</span></div>
+  <div class="presets"><span class="lbl">Demo clock</span><span class="p on">Just arrived</span><span class="p">30 min of free time left</span><span class="p">15 min past free time</span><span class="p">Unload started</span><span class="p" style="margin-left:auto">Reset sample</span></div>
+ </div>
+</div>
+<div class="side">
+ <div class="lbl">Trail · same events every view sees</div>
+ <div class="ev"><span class="t">2:00 PM</span><span>Appointment, door TBD <code>appointment</code></span></div>
+ <div class="ev"><span class="t">2:06 PM</span><span>Luis arrived · SMS <code>arrived</code></span></div>
+ <div class="ev"><span class="t">2:08 PM</span><span>Door 4 occupied · SMS <code>delay_reported</code></span></div>
+ <div class="ev"><span class="t">2:08 PM</span><span>Free time started, 120 min <code>clock_started</code></span></div>
+ <div class="ev" style="opacity:.55"><span class="t">3:36 PM</span><span>Heads-up to Sam (shipper) and Priya (DC) if still waiting <code>notice_sent</code></span></div>
+ <div class="ev" style="opacity:.55"><span class="t">4:06 PM</span><span>Free time ends · meter starts <code>charge_risk</code></span></div>
+ <div style="margin-top:auto" class="note">ROUGH MOCK · fictional data · layout open to change</div>
+</div></div></body></html>

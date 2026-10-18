@@ -1,0 +1,68 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><style>
+body{width:1600px;height:960px;overflow:hidden}
+.rail{position:relative;margin:18px 28px 6px;height:58px}
+.line{position:absolute;top:24px;left:0;right:0;border-top:2px solid #1A1A1A}
+.pay{position:absolute;top:21px;height:8px;left:58%;right:0;background:repeating-linear-gradient(45deg,#F4E3DF 0 6px,#F4F3EF 6px 12px);border:1px solid #B42318}
+.m{position:absolute;top:0;font-family:"IBM Plex Mono",monospace;font-size:11px;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.m i{display:block;width:9px;height:9px;border-radius:50%;background:#1A1A1A;margin:17px auto 4px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:8px 28px 24px}
+.col{background:#FBFAF7;border:1px solid #CFCBC2;border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;height:770px}
+.who{display:flex;justify-content:space-between;align-items:baseline}
+.h{font-size:40px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.sms{background:#ECE9E1;border-radius:12px 12px 12px 3px;padding:12px 14px;font-size:13.5px;line-height:1.45}
+.k{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px dashed #CFCBC2}
+.k span:last-child{font-family:"IBM Plex Mono",monospace}
+.pack .ev{grid-template-columns:70px 1fr}
+</style></head><body>
+<div class="top"><div class="brand"><b>Dock</b><span class="mono muted" style="font-size:12px">LL-88421 · one event log, three views · demo clock presets shown per column</span></div>
+<div class="seg"><span class="on">Carrier</span><span class="on" style="border-left:1px solid #FBFAF7">Shipper</span><span class="on" style="border-left:1px solid #FBFAF7">Broker</span></div></div>
+<div class="rail"><div class="line"></div><div class="pay"></div>
+ <div class="m" style="left:0%;transform:none;text-align:left">2:00 appt<i style="margin-left:0"></i></div>
+ <div class="m" style="left:6%;top:40px">2:06 arrived<i style="margin-top:-24px"></i></div>
+ <div class="m" style="left:44%">3:36 heads-up $0.00<i></i></div>
+ <div class="m" style="left:50%;top:40px">3:40 call · Priya<i style="margin-top:-24px"></i></div>
+ <div class="m" style="left:58%">4:06 free time ends<i style="background:#B42318"></i></div>
+ <div class="m" style="left:72%">4:21 heads-up $18.75<i style="background:#B42318"></i></div>
+ <div class="m" style="left:94%">4:48 unload started<i style="background:#3D5A4A"></i></div>
+</div>
+<div class="cols">
+ <!-- SHIPPER -->
+ <div class="col">
+  <div class="who"><span class="lbl">Shipper · Sam Okonkwo, Northwind Orchards</span><span class="lbl">3:36 PM</span></div>
+  <span class="stamp risk" style="align-self:flex-start">30 MIN LEFT</span>
+  <div><div class="h">$0.00 so far</div><div class="muted" style="margin-top:6px">Charges start at <b style="color:#1A1A1A">4:06 PM ET</b> if door 4 is still closed.</div></div>
+  <div class="lbl">Heads-up you received · SMS</div>
+  <div class="sms">Dock · LL-88421: Red Kettle's driver has waited at Harbor &amp; Rye door 4 since 2:06 PM ET. Free time ends 4:06 PM ET. Estimate so far $0.00. If unload starts before 4:06, it stays $0.00.</div>
+  <div class="k"><span class="muted">Delivery</span><span>logged (demo, not sent)</span></div>
+  <div class="k"><span class="muted">Also told</span><span>Priya Shah · Harbor &amp; Rye DC</span></div>
+  <div class="card" style="background:#F7F1E6;border-color:#E2C9A0"><div class="lbl" style="color:#A15C07">The one thing that keeps this at zero</div><div style="font-size:16px;margin-top:6px">Get Harbor &amp; Rye to start the unload before 4:06 PM.</div></div>
+  <div style="display:flex;gap:8px;margin-top:auto"><span class="btn pri">Call Harbor &amp; Rye</span><span class="btn">See trail</span></div>
+ </div>
+ <!-- CARRIER -->
+ <div class="col">
+  <div class="who"><span class="lbl">Carrier · Luis Ortega, truck 1841</span><span class="lbl">4:21 PM</span></div>
+  <span class="stamp accr" style="align-self:flex-start">ACCRUING</span>
+  <div><div class="h" style="color:#B42318">$18.75 on the trail</div><div class="muted" style="margin-top:6px">15 min past free time · +$18.75 every 15 min</div></div>
+  <div class="card" style="border-color:#E7B8B1;background:#FBF1EF"><div class="lbl" style="color:#B42318">Commit missed</div><div style="margin-top:6px">3:40 PM call: Priya said they could start in <b>about 40 min</b>. That was 4:20. Trailer still closed.</div></div>
+  <div class="lbl">Trail</div>
+  <div class="ev"><span class="t">3:36 PM</span><span>Heads-up · $0.00 <code>notice_sent</code></span></div>
+  <div class="ev"><span class="t">3:40 PM</span><span>Call · Priya: “about 40 minutes” <code>call_result</code></span></div>
+  <div class="ev"><span class="t">4:06 PM</span><span>Free time ended <code>charge_risk</code></span></div>
+  <div class="ev"><span class="t">4:21 PM</span><span>2nd heads-up · $18.75 <code>notice_sent</code></span></div>
+  <div style="display:flex;gap:8px;margin-top:auto"><span class="chip">They started unloading.</span><span class="btn pri">Log driver SMS</span></div>
+ </div>
+ <!-- BROKER -->
+ <div class="col pack">
+  <div class="who"><span class="lbl">Broker · Alex Kim, Lantern Lane</span><span class="lbl">4:48 PM</span></div>
+  <span class="stamp stop" style="align-self:flex-start">CLOCK STOPPED</span>
+  <div><div class="h">$56.25 supported</div><div class="mono muted" style="margin-top:8px;font-size:12px">42 min past free time → 45 min billed<br>45 / 60 × $75.00 = $56.25</div></div>
+  <div class="lbl">Proof pack · every line is a timestamped event</div>
+  <div class="ev"><span class="t">2:00 PM</span><span>Appointment</span></div>
+  <div class="ev"><span class="t">2:06 PM</span><span>Arrived (driver SMS)</span></div>
+  <div class="ev"><span class="t">3:36 PM</span><span>Heads-up to shipper + DC · $0.00</span></div>
+  <div class="ev"><span class="t">3:40 PM</span><span>Call · Priya: “about 40 minutes”</span></div>
+  <div class="ev"><span class="t">4:21 PM</span><span>Heads-up to shipper + DC · $18.75</span></div>
+  <div class="ev"><span class="t">4:48 PM</span><span>Unload started · clock stopped</span></div>
+  <div style="margin-top:auto;border-top:1px solid #1A1A1A;padding-top:10px;display:flex;justify-content:space-between;align-items:center"><span class="mono" style="font-size:12px">This is not an invoice.</span><span class="btn">Export trail .md</span></div>
+ </div>
+</div></body></html>

@@ -1,0 +1,24 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F4F3EF;color:#1A1A1A;font-family:"IBM Plex Sans","Inter",system-ui,sans-serif;font-size:14px;line-height:1.4}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.muted{color:#5F5B53}
+.rule{border-top:1px solid #CFCBC2}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid #CFCBC2;background:#FBFAF7}
+.brand{display:flex;align-items:baseline;gap:14px}
+.brand b{font-size:20px;letter-spacing:-.02em}
+.seg{display:flex;border:1px solid #1A1A1A;border-radius:4px;overflow:hidden}
+.seg span{padding:6px 14px;font-size:13px;border-right:1px solid #1A1A1A}
+.seg span:last-child{border-right:0}
+.seg .on{background:#1A1A1A;color:#FBFAF7}
+.banner{background:#E9E6DE;padding:6px 28px;font-size:12px;color:#5F5B53;font-family:"IBM Plex Mono",monospace}
+.stamp{display:inline-block;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:15px;letter-spacing:.12em;padding:5px 12px;border:2.5px solid currentColor;border-radius:3px;transform:rotate(-3deg)}
+.free{color:#1A1A1A}.risk{color:#A15C07}.accr{color:#B42318}.stop{color:#3D5A4A}
+.card{background:#FBFAF7;border:1px solid #CFCBC2;border-radius:6px;padding:14px 16px}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5F5B53}
+.ev{display:grid;grid-template-columns:78px 1fr;gap:10px;padding:9px 0;border-top:1px dashed #CFCBC2;font-size:13px}
+.ev .t{font-family:"IBM Plex Mono",monospace;font-size:12px;color:#5F5B53}
+.ev code{font-family:"IBM Plex Mono",monospace;font-size:11px;background:#ECE9E1;padding:1px 5px;border-radius:3px;color:#3F3B34}
+.chip{display:inline-block;border:1px solid #9C978C;border-radius:14px;padding:5px 11px;font-size:12px;background:#FBFAF7}
+.btn{display:inline-block;border:1px solid #1A1A1A;border-radius:4px;padding:7px 12px;font-size:13px}
+.btn.pri{background:#1A1A1A;color:#FBFAF7}
+.note{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#2B5BD7}
