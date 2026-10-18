@@ -14,6 +14,7 @@ dependencies = [
     "dock-proof",
     "dock-web",
     "dock-voice",
+    "dock-track",
     "guava-sdk>=0.48",
 ]
 
@@ -32,6 +33,7 @@ dock-notify = { workspace = true }
 dock-proof = { workspace = true }
 dock-web = { workspace = true }
 dock-voice = { workspace = true }
+dock-track = { workspace = true }
 
 [dependency-groups]
 dev = ["pytest>=8.3"]

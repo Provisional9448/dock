@@ -34,6 +34,7 @@ SCHEMA: dict = {
                 "clock_started",
                 "charge_risk",
                 "claim_drafted",
+                "tracking_requested",
             ]
         },
         "occurred_at": {"type": "string", "description": "When the fact happened. UTC, trailing Z."},
