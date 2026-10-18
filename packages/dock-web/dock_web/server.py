@@ -10,10 +10,13 @@ from urllib.parse import urlparse
 from dock_web.desk import Desk
 
 STATIC = Path(__file__).resolve().parent / "static" / "index.html"
+LIVE_STATIC = Path(__file__).resolve().parent / "static" / "live.html"
 
 
 class DockServer(ThreadingHTTPServer):
     desk: Desk
+    live: Desk | None = None
+    home: str = "sample"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -24,7 +27,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/favicon.ico":
             self._bytes(204, b"", "image/x-icon")
             return
-        if path in ("/", "/index.html"):
+        if path == "/" and self.server.home == "live" and self.server.live is not None:
+            path = "/live"
+        if path == "/live" and self.server.live is not None:
+            self._bytes(200, LIVE_STATIC.read_bytes(), "text/html; charset=utf-8")
+            return
+        if path == "/api/live" and self.server.live is not None:
+            self._json(200, self.server.live.snapshot())
+            return
+        if path in ("/", "/index.html", "/sample"):
             body = STATIC.read_bytes()
             self._bytes(200, body, "text/html; charset=utf-8")
             return
@@ -39,6 +50,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         path = urlparse(self.path).path
         desk = self.server.desk
+        if path.startswith("/api/live/") and self.server.live is not None:
+            desk = self.server.live
+            path = "/api/" + path[len("/api/live/"):]
         try:
             payload = self._read_json()
             if path == "/api/reset":
@@ -92,7 +106,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def serve(desk: Desk, host: str, port: int) -> DockServer:
+def serve(desk: Desk, host: str, port: int, live: Desk | None = None, home: str = "sample") -> DockServer:
     server = DockServer((host, port), Handler)
     server.desk = desk
+    server.live = live
+    server.home = home if live is not None else "sample"
     return server

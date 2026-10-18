@@ -16,16 +16,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8741)
     parser.add_argument("--root", default=None, help="Repo root. Defaults to an ancestor that contains data/samples.")
+    parser.add_argument("--live", action="store_true", help="Open on the live desk (/live) instead of the sample (/sample).")
     args = parser.parse_args(argv)
     try:
         root = Path(args.root) if args.root else _repo_root()
         desk = Desk.from_repo(root)
-        httpd = serve(desk, args.host, args.port)
+        from dock_web.live import LiveDesk, LiveRun
+
+        live = LiveDesk(LiveRun(root))
+        httpd = serve(desk, args.host, args.port, live=live, home="live" if args.live else "sample")
     except (OSError, ValueError) as exc:
         print(f"dock-web: {exc}", file=sys.stderr)
         return 1
     shown = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    print(f"Dock desk at http://{shown}:{args.port}", flush=True)
+    print(f"Dock desk at http://{shown}:{args.port}  (live: /live, sample: /sample)", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
