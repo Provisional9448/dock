@@ -43,7 +43,7 @@ export GUAVA_AGENT_NUMBER=+12402125485        # your number from `guava numbers 
 uv run dock-web --live --port 8741 &          # desk at http://127.0.0.1:8741
 uv run dock-voice serve                       # inbound line; never dials out
 # Public desk instead of local: point the agent at it
-#   DOCK_LIVE_URL=https://dock-desk-production.up.railway.app DOCK_WRITE_TOKEN=... uv run dock-voice serve
+#   DOCK_LIVE_URL=https://your-app.up.railway.app DOCK_WRITE_TOKEN=... uv run dock-voice serve
 # No phone? test the agent with Guava's simulated caller:
 uv run dock-voice roleplay driver   # or driver-update, shipper, consignee, broker
 uv run dock-live replay --pause 4   # scripted fallback for the video
